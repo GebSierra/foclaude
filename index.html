@@ -1,698 +1,990 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=600">
-<title>Morning</title>
-<style type="text/css">
-body {
-  background: #ffffff;
-  color: #000000;
-  font-family: Georgia, serif;
-  font-size: 20px;
-  line-height: 1.5;
-  margin: 0;
-  padding: 18px 20px 60px 20px;
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Focaude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0f12;--panel:#17191e;--panel2:#1f2228;--line:#2a2e36;--text:#ece7dc;--muted:#8b8f98;--gold:#e9bd62;
+  --focus:#f5c04a;--flow:#e8951f;--calm:#4a9df0;--distracted:#7d828c;--stress:#e5484d;--fatigue:#a46ad8;--idle:#4b4f57;
 }
-h1 {
-  font-size: 26px;
-  margin: 0 0 2px 0;
-  font-weight: normal;
-}
-p.date {
-  font-size: 17px;
-  margin: 0 0 22px 0;
-}
-h2 {
-  font-size: 15px;
-  font-family: Helvetica, Arial, sans-serif;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  border-bottom: 2px solid #000000;
-  padding-bottom: 4px;
-  margin: 30px 0 12px 0;
-  font-weight: bold;
-}
-table.rd { width: 100%; border-collapse: collapse; }
-table.rd td { padding: 5px 0; vertical-align: top; font-size: 20px; }
-td.lbl {
-  width: 92px;
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 15px;
-  text-transform: uppercase;
-}
-ul.chk { list-style: none; margin: 0; padding: 0; }
-ul.chk li { padding: 9px 0; border-bottom: 1px solid #cccccc; }
-ul.chk label { display: block; }
-input.box {
-  width: 26px;
-  height: 26px;
-  vertical-align: middle;
-  margin: 0 12px 0 0;
-}
-p.pr {
-  margin: 0 0 14px 0;
-  padding-left: 16px;
-  border-left: 3px solid #999999;
-}
-p.sub {
-  font-size: 16px;
-  color: #444444;
-  margin: 3px 0 0 38px;
-  line-height: 1.4;
-}
-span.tm {
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 14px;
-  color: #444444;
-  margin-left: 6px;
-}
-p.dev {
-  font-size: 17px;
-  margin: 0 0 14px 0;
-  padding: 8px 12px;
-  border: 2px solid #000000;
-}
-p.foot { font-size: 16px; margin-top: 34px; }
-a { color: #000000; }
-h3 {
-  font-size: 18px;
-  margin: 18px 0 4px 0;
-}
-ul.g { margin: 0 0 10px 0; padding-left: 24px; font-size: 18px; }
-ul.g li { padding: 2px 0; }
-hr.sep { border: none; border-top: 2px solid #000000; margin: 34px 0 0 0; }
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}html{background:var(--bg)}
+body{background:radial-gradient(1200px 700px at 50% 30%,#1a1c22 0%,var(--bg) 60%);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+.app{max-width:1100px;margin:0 auto;padding:20px 24px 40px;display:flex;flex-direction:column;min-height:100%}
+header{display:flex;align-items:center;gap:14px}
+.brand{font-weight:500;letter-spacing:.18em;text-transform:uppercase;font-size:13px;color:var(--gold)}
+nav{display:flex;gap:4px;margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+nav button{background:none;border:0;padding:7px 16px;border-radius:999px;color:var(--muted);font-size:14px}
+nav button.on{background:var(--panel2);color:var(--text)}
+.conn{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--muted)}
+.conn .dot{width:8px;height:8px;border-radius:50%;background:#555}
+.conn.on .dot{background:#4fd18b;box-shadow:0 0 8px #4fd18b}
+.conn.on{color:var(--text)}
+section[hidden]{display:none!important}
+
+/* ---- Focus view ---- */
+.focus{flex:1;display:grid;grid-template-columns:1fr 320px;gap:28px;margin-top:28px;align-items:start}
+.stage{display:flex;flex-direction:column;align-items:center}
+.pill{border:1px solid rgba(233,189,98,.35);background:rgba(23,25,30,.7);border-radius:999px;padding:8px 26px;font-size:22px;font-weight:300;color:var(--gold);transition:color .8s,border-color .8s}
+#orb{width:min(460px,80vw);height:min(460px,80vw);margin:18px 0 10px}
+.metrics{display:flex;gap:34px;margin-bottom:16px}
+.metric{text-align:center}.metric b{display:block;font-size:30px;font-weight:300}.metric span{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.tl{width:min(460px,90%);height:14px;border-radius:999px;background:var(--panel);border:1px solid var(--line);overflow:hidden;display:flex}
+.tl i{flex:1;height:100%}
+.tlcap{width:min(460px,90%);display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+
+.side{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+.card h3{margin:0 0 12px;font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.clock{font-size:52px;font-weight:200;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px}
+.durs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.durs button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 0;font-size:13px;color:var(--muted)}
+.durs button.on{border-color:var(--gold);color:var(--gold)}
+.big{width:100%;border:0;border-radius:12px;padding:13px;font-weight:500;background:linear-gradient(135deg,#e9bd62,#c98a2a);color:#1a1307}
+.big.stop{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.big:disabled{opacity:.4;cursor:default}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;background:var(--c)}
+.alert{position:fixed;left:50%;top:22px;transform:translate(-50%,-160%);opacity:0;transition:transform .4s,opacity .4s;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 20px;z-index:5;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.alert.show{transform:translate(-50%,0);opacity:1}
+
+/* ---- Journal / summary ---- */
+.journal{margin-top:28px;display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start}
+.list{display:flex;flex-direction:column;gap:8px;max-height:72vh;overflow:auto}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left}
+.item.on{border-color:var(--gold)}
+.item .t{font-size:14px}.item .m{font-size:12px;color:var(--muted)}
+.bubbles{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.bubbles i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:inset 0 -2px 3px rgba(0,0,0,.25)}
+.summary h2{margin:0 0 2px;font-weight:300;font-size:26px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.stat{background:var(--panel2);border-radius:12px;padding:12px}.stat b{display:block;font-size:24px;font-weight:300}.stat span{font-size:12px;color:var(--muted)}
+#chart{width:100%;height:220px;display:block}
+.bars{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.bar{display:grid;grid-template-columns:90px 1fr 46px;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.bar div{height:8px;border-radius:99px;background:var(--panel2);overflow:hidden}.bar div i{display:block;height:100%;background:var(--c)}
+textarea{width:100%;min-height:80px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px;font:inherit;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ghost{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px}
+.empty{color:var(--muted);padding:30px;text-align:center}
+
+/* ---- Settings ---- */
+.settings{margin-top:28px;max-width:640px}
+.field{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.field input,.field select{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit;width:200px}
+#rawlog{background:#0a0b0d;border:1px solid var(--line);border-radius:10px;padding:10px;height:260px;overflow:auto;font:12px/1.45 ui-monospace,Consolas,monospace;color:#9aa;white-space:pre-wrap;margin-top:10px}
+.warn{background:#3a2a12;border:1px solid #6b4a1a;color:#f0c98a;border-radius:10px;padding:10px 14px;margin-top:14px;font-size:13px}
+
+/* ---- labels ---- */
+.mk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mk button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 0;font-size:14px}
+.mk button[data-l=focused]:hover,.mk button.flash[data-l=focused]{border-color:var(--focus);color:var(--focus)}
+.mk button[data-l=drifted]:hover,.mk button.flash[data-l=drifted]{border-color:var(--distracted);color:#c9ccd2}
+kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted);margin-left:4px}
+.alert button{margin-left:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px 10px;font-size:13px}
+.rate{display:flex;gap:6px;margin-top:6px}.rate button{width:40px;height:36px;border-radius:9px;background:var(--panel2);border:1px solid var(--line)}
+.rate button.on{border-color:var(--gold);color:var(--gold)}
+/* ---- clip settings ---- */
+.agrid{display:grid;grid-template-columns:1fr 90px 90px;gap:10px 8px;align-items:center;margin-bottom:6px}
+.agrid b{display:block;font-weight:500;font-size:14px}.agrid span{font-size:12px;color:var(--muted)}
+.ah{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:center}
+.sw{display:flex;justify-content:center;cursor:pointer}.sw input{display:none}
+.sw i{width:38px;height:22px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);position:relative;transition:.2s}
+.sw i::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:.2s}
+.sw input:checked+i{background:rgba(233,189,98,.25);border-color:var(--gold)}.sw input:checked+i::after{left:19px;background:var(--gold)}
+.tcue{position:absolute;left:0;right:0;top:16%;text-align:center;font-size:26px;font-weight:200;letter-spacing:.08em;color:var(--text);opacity:.85}
+/* ---- training ---- */
+.train{margin-top:28px}
+.tsetup{display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 0;text-align:center}
+.tintro{max-width:520px;color:var(--muted)}
+.tl6{grid-template-columns:repeat(6,1fr);width:min(420px,90vw)}
+.tstage{position:fixed;inset:0;background:#07080a;z-index:4}
+#tCanvas{width:100%;height:100%;display:block}
+.thud{position:absolute;left:0;right:0;bottom:34px;display:flex;justify-content:center;gap:34px;color:var(--muted);font-size:14px;letter-spacing:.06em}
+#tClock{color:var(--text);font-variant-numeric:tabular-nums}
+.tstop{position:absolute;top:22px;right:24px}
+@media (max-width:860px){.focus,.journal{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}nav button{padding:7px 10px}}
 </style>
 </head>
 <body>
+<div class="app">
+<header>
+  <div class="brand">Focaude</div>
+  <nav><button data-v="vFocus" class="on">Focus</button><button data-v="vTrain">Training</button><button data-v="vJournal">Journal</button><button data-v="vSettings">Settings</button></nav>
+  <button class="conn" id="connBtn"><span class="dot"></span><span id="connTxt">Connect clip</span></button>
+</header>
+<div class="warn" id="btwarn" hidden>This browser has no Bluetooth access. Open this file in Chrome or Edge on your PC.</div>
 
-<h1>Morning</h1>
-<p class="date" id="today">&nbsp;</p>
+<section id="vFocus" class="focus">
+  <div class="stage">
+    <div class="pill" id="pill">State: not connected</div>
+    <canvas id="orb" width="920" height="920"></canvas>
+    <div class="metrics">
+      <div class="metric"><b id="mDepth">–</b><span>Focus depth</span></div>
+      <div class="metric"><b id="mCalm">–</b><span>Breaths/min</span></div>
+      <div class="metric"><b id="mFocusPct">–</b><span>Session focus</span></div>
+    </div>
+    <div class="tl" id="tl"></div>
+    <div class="tlcap"><span>5 min ago</span><span>now</span></div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h3>Work session</h3>
+      <div class="clock" id="clock">25:00</div>
+      <div class="sub" id="clockSub">Pick a length, then start.</div>
+      <div class="durs" id="durs"><button data-m="25" class="on">25</button><button data-m="50">50</button><button data-m="90">90</button><button data-m="0">∞</button></div>
+      <label class="field" style="border:0;padding:0 0 12px;cursor:pointer"><span style="font-size:13px;color:var(--muted)">Rain-to-fire soundscape</span><span class="sw"><input type="checkbox" id="wsSound"><i></i></span></label>
+      <button class="big" id="startBtn">Start session</button>
+      <div class="marks" id="marks" hidden>
+        <div class="sub" style="margin:12px 0 6px">Tell it how you really are</div>
+        <div class="mk"><button data-l="focused">Focused <kbd>F</kbd></button><button data-l="drifted">Drifted <kbd>D</kbd></button></div>
+        <div class="sub" id="markCount" style="margin:6px 0 0;font-size:12px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>States</h3>
+      <div class="legend">
+        <span style="--c:var(--flow)">Flow</span><span style="--c:var(--focus)">Focused</span>
+        <span style="--c:var(--calm)">Calm</span><span style="--c:var(--distracted)">Distracted</span>
+        <span style="--c:var(--stress)">Stressed</span><span style="--c:var(--fatigue)">Fatigued</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-<h2>Reading</h2>
-<div id="reading">
-  <p>Open the plan at thegospelcoalition.org/readthebible</p>
+<section id="vTrain" class="train" hidden>
+  <div class="tsetup" id="tSetup">
+    <div class="pill" style="font-size:20px">Focus training</div>
+    <p class="tintro">Rest your eyes on the orb. Breathe evenly through your nose. When your focus depth holds above 80, the droplets dissolve and the rain turns into a fire.</p>
+    <div class="durs tl6" id="tDurs"><button data-m="2">2</button><button data-m="4" class="on">4</button><button data-m="6">6</button><button data-m="8">8</button><button data-m="10">10</button><button data-m="12">12</button></div>
+    <div class="sub">minutes · use headphones for the soundscape</div>
+    <div class="field" style="width:min(420px,90vw)"><span>Breath pacer</span><select id="tPacer"><option value="0">Off</option><option value="a6" selected>Adaptive, guide to 6/min</option><option value="a5.5">Adaptive, guide to 5.5/min</option><option value="a4.5">Adaptive, guide to 4.5/min</option><option value="6">Fixed 6/min</option><option value="5.5">Fixed 5.5/min</option></select></div>
+    <button class="big" id="tStart" style="max-width:320px">Begin training</button>
+    <div class="sub" style="margin-top:22px">Recovery</div>
+    <div class="row" id="recRow" style="justify-content:center"><button class="ghost" data-r="breath">Slow breathing · 10 min</button><button class="ghost" data-r="walk">Walk · 15 min</button><button class="ghost" data-r="nsdr">Deep rest · 20 min</button></div>
+  </div>
+  <div class="tstage" id="tStage" hidden>
+    <canvas id="tCanvas"></canvas>
+    <div class="tcue" id="tCue"></div>
+    <div class="thud"><span id="tClock">4:00</span><span id="tState">–</span><span id="tClear">Clearance 0%</span><span id="tPace"></span></div>
+    <button class="ghost tstop" id="tStop">End</button>
+  </div>
+</section>
+
+<section id="vJournal" class="journal" hidden>
+  <div>
+    <div class="list" id="list"></div>
+    <div class="row"><button class="ghost" id="histBtn">Clip history</button><button class="ghost" id="exportBtn">Export journal</button><label class="ghost">Import<input type="file" id="importFile" accept=".json" hidden></label></div>
+  </div>
+  <div class="card summary" id="summary"><div class="empty">Finish a session and it will show up here.</div></div>
+</section>
+
+<section id="vSettings" class="settings" hidden>
+  <div class="card">
+    <h3>Alerts</h3>
+    <div class="field"><span>Distraction alert after (seconds)</span><input id="setDistract" type="number" min="5" max="600" value="30"></div>
+    <div class="field"><span>Fatigue alert after (seconds)</span><input id="setFatigue" type="number" min="10" max="900" value="60"></div>
+    <div class="field"><span>Struggle phase (minutes)<br><small style="color:var(--muted)">Distraction buzz stays on. Fatigue and stress alerts wait.</small></span><input id="setStruggle" type="number" min="0" max="60" value="15"></div>
+    <div class="field"><span>Pre-session breath ritual</span><select id="setRitual"><option value="0">Off</option><option value="bal" selected>1 min, balanced (equal in and out)</option><option value="calm">1 min, calming (longer out-breath)</option></select></div>
+    <div class="field"><span>Don't end a session while I'm in deep focus</span><select id="setHold"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+    <div class="field"><span>Alert sound</span><select id="setSound"><option value="1">On</option><option value="0">Off</option></select></div>
+    <div class="field"><span>Desktop notifications</span><button class="ghost" id="notifBtn">Allow</button></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Clip vibration</h3>
+    <div class="agrid" id="alertGrid"></div>
+    <div class="field"><span>Vibration strength</span><select id="vibSel"><option value="0">Off</option><option value="60">Low</option><option value="80">Medium</option><option value="100">High</option></select></div>
+    <div id="clipInfo" style="font-size:13px;color:var(--muted);margin-top:10px"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Clip</h3>
+    <div class="field"><span>Clip address</span><input id="mac" value="A4:11:63:E0:A7:A1"></div>
+    <div class="field"><span>Owner ID</span><input id="uid" value="1"></div>
+    <div class="row"><button class="ghost" id="logToggle">Show debug log</button><button class="ghost" id="copyLog">Copy log</button></div>
+    <div id="rawlog" hidden></div>
+  </div>
+</section>
 </div>
+<div class="alert" id="alert"></div>
+<script>
+/* ===== protocol layer (tested) ===== */
+const SVC="0000fee7-0000-1000-8000-00805f9b34fb",
+      FEC7="0000fec7-0000-1000-8000-00805f9b34fb",
+      FEC8="0000fec8-0000-1000-8000-00805f9b34fb",
+      FED8="0000fed8-0000-1000-8000-00805f9b34fb";
+const SALT="3BF608C70828",CMD_BIND=27507,CMD_CHALLENGE=27514,CHANNEL=30001,MAGIC=0xFE;
+let SEQ=0;const nextSeq=()=>(SEQ=(SEQ+1)&0xFFFF);
+const LIVE={connected:false,device:null,server:null,fec7:null,last:null,distractSince:0};
 
-<h2>AM routine</h2>
-<p class="dev" id="devotions">&nbsp;</p>
-<ul class="chk">
-  <li>
-    <label><input type="checkbox" class="box" id="a1">Prep the night before</label>
-    <p class="sub">Coffee. Bible open to the reading. Scribe open to journal. Daylight lamp set up. Workout clothes and day clothes laid out.</p>
-  </li>
-  <li>
-    <label><input type="checkbox" class="box" id="a2">Wake up, water, mirror</label>
-    <p class="sub">Feet on the floor right away. Water three times: out, on, and in. Head in the cold shower. Check in at the mirror and read the principles. Ten pushups. Living room within 5 minutes.</p>
-  </li>
-  <li>
-    <label><input type="checkbox" class="box" id="a3">Bible reading<span class="tm">5:25 to 6:30</span></label>
-    <p class="sub">Five minutes of focused breathing. Mind-work. Read the Bible. Pray.</p>
-  </li>
-  <li>
-    <label><input type="checkbox" class="box" id="a4">Get dressed, wake Ruthie<span class="tm">6:30 to 7:00</span></label>
-    <p class="sub">Coffee, smoothie, clothes set out. Open the sermon on the Kindle and work on it. At 6:55 say hi to Ru and wake her.</p>
-  </li>
-  <li>
-    <label><input type="checkbox" class="box" id="a5">Breakfast and family devotions<span class="tm">7:00 to 7:45</span></label>
-  </li>
-  <li>
-    <label><input type="checkbox" class="box" id="a6">Workout<span class="tm">7:45 to 8:45</span></label>
-    <p class="sub">Sixty minutes. Shower and dress 8:45 to 8:55. Start work at 9:00.</p>
-  </li>
-</ul>
+/* ---- MD5 (standard) ---- */
+function md5(bytes){const K=[],Sr=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+  for(let i=0;i<64;i++)K[i]=Math.floor(Math.abs(Math.sin(i+1))*2**32)>>>0;
+  const len=bytes.length,nb=((len+8)>>6)+1,w=new Uint32Array(nb*16);
+  for(let i=0;i<len;i++)w[i>>2]|=bytes[i]<<((i%4)*8);
+  w[len>>2]|=0x80<<((len%4)*8);w[nb*16-2]=(len*8)>>>0;w[nb*16-1]=Math.floor(len*8/2**32);
+  let a0=0x67452301,b0=0xefcdab89,c0=0x98badcfe,d0=0x10325476;
+  for(let j=0;j<nb*16;j+=16){let A=a0,B=b0,C=c0,D=d0;
+    for(let i=0;i<64;i++){let F,g;
+      if(i<16){F=(B&C)|(~B&D);g=i}else if(i<32){F=(D&B)|(~D&C);g=(5*i+1)%16}
+      else if(i<48){F=B^C^D;g=(3*i+5)%16}else{F=C^(B|~D);g=(7*i)%16}
+      F=(F+A+K[i]+w[j+g])>>>0;A=D;D=C;C=B;B=(B+((F<<Sr[i])|(F>>>(32-Sr[i]))))>>>0}
+    a0=(a0+A)>>>0;b0=(b0+B)>>>0;c0=(c0+C)>>>0;d0=(d0+D)>>>0}
+  const out=new Uint8Array(16);[a0,b0,c0,d0].forEach((v,i)=>{for(let k=0;k<4;k++)out[i*4+k]=(v>>>(8*k))&255});return out}
 
-<h2>Today</h2>
-<ul class="chk">
-  <li><label><input type="checkbox" class="box" id="c1">12 minutes of silence with God</label></li>
-  <li><label><input type="checkbox" class="box" id="c2">Word and prayer, 5:15 to 6:00</label></li>
-  <li><label><input type="checkbox" class="box" id="c4">Greek flashcards</label></li>
-  <li><label><input type="checkbox" class="box" id="c5">Readwise daily review</label></li>
-  <li><label><input type="checkbox" class="box" id="c6">Write out a to-do list</label></li>
-  <li><label><input type="checkbox" class="box" id="c7">AM, PM, office routines</label></li>
-  <li><label><input type="checkbox" class="box" id="c8">Creatine and vitamins with lunch</label></li>
-  <li><label><input type="checkbox" class="box" id="c9">Workout</label></li>
-</ul>
+/* ---- key derivation (byte2int quirk, from your doc) ---- */
+function i32(x){x=x&0xFFFFFFFF;return x&0x80000000?x-0x100000000:x}
+function writeKey(uid,mac){
+  const macb=mac.replace(/[^0-9a-f]/gi,'').match(/../g).map(h=>parseInt(h,16));
+  const rev=macb.slice().reverse().map(b=>b.toString(16).padStart(2,'0')).join('');
+  const s=(BigInt.asUintN(64,BigInt(uid))).toString()+SALT+rev;
+  const k=md5(new TextEncoder().encode(s));
+  const sp=i=>k[i]>=128?k[i]-256:k[i];
+  const v=i32(i32(sp(3)<<24)|(k[0]&255)|i32((sp(1)<<8)&0xff00)|(i32(sp(2)<<24)>>8));
+  return v}
+function i64le(n){const b=new Uint8Array(8),dv=new DataView(b.buffer);dv.setBigInt64(0,BigInt.asIntN(64,BigInt(n)),true);return b}
+function i32le(n){const b=new Uint8Array(4),dv=new DataView(b.buffer);dv.setInt32(0,i32(n),true);return b}
+function u16le(n){return new Uint8Array([n&255,(n>>8)&255])}
+function cat(...a){const t=a.reduce((s,x)=>s+x.length,0),o=new Uint8Array(t);let p=0;for(const x of a){o.set(x,p);p+=x.length}return o}
+function innerFrame(cmd,payload,uid){const hdr=cat(new Uint8Array([1]),u16le(payload.length+17),u16le(cmd),u16le(0),i64le(uid),u16le(1));return cat(hdr,payload)}
+function uvarint(n){const o=[];while(true){let b=n&0x7f;n>>=7;o.push(n?b|0x80:b);if(!n)break}return new Uint8Array(o)}
+function proto(inner){return cat(new Uint8Array([0x0a,0x00,0x12]),uvarint(inner.length),inner)}
+function transport(p,seq=nextSeq()){const h=new Uint8Array(8),dv=new DataView(h.buffer);dv.setUint8(0,MAGIC);dv.setUint8(1,0);dv.setUint16(2,p.length+8,false);dv.setUint16(4,CHANNEL,false);dv.setUint16(6,seq,false);return cat(h,p)}
+function buildFrame(cmd,payload,uid){return transport(proto(innerFrame(cmd,payload,uid)))}
+function bindFrame(uid,mac,reset){const wk=writeKey(uid,mac);return buildFrame(CMD_BIND,cat(i64le(uid),i32le(wk),new Uint8Array([reset?1:0])),uid)}
+function challengeFrame(uid,mac){return buildFrame(CMD_CHALLENGE,i32le(writeKey(uid,mac)),uid)}
+/* cmd 27536 = syncFnConfig (TrackerFnConfigEntity, 36 bytes LE). notification_mode=1 is
+   what the app's "Start session" sends and what makes the clip stream once/sec. */
+const CMD_FNCONFIG=27536;
+function fnConfig(notiMode,forceHarvest){
+  const b=new Uint8Array(36),dv=new DataView(b.buffer);
+  dv.setInt32(0,Math.floor(Date.now()/1000),true);            // currentTime
+  const y=new Date().getFullYear(),std=Math.max(new Date(y,0,1).getTimezoneOffset(),new Date(y,6,1).getTimezoneOffset());
+  dv.setInt32(4,-std*60000,true);                              // tz: ms, standard time (Java getRawOffset)
+  const f=(typeof clipFlags==='function')?clipFlags():{def:0,ses:0};
+  dv.setInt32(24,f.def,true);                                  // notification_default_flag (always)
+  dv.setInt32(28,f.ses,true);                                  // notification_session_flag (in session)
+  dv.setUint8(32,0);                                           // pacer_mode
+  dv.setUint8(33,forceHarvest?1:0);                            // force_harvest_flag
+  dv.setUint8(34,notiMode?1:0);                                // notification_mode: 1 = session running
+  dv.setUint8(35,3);                                           // mindfulness_level
+  return b;
+}
+function startFrame(uid){return buildFrame(CMD_FNCONFIG,fnConfig(1,0),uid)}
+/* Raw "native" frames (d.e path): opcode rides in the transport header, payload raw.
+   26505 ECI_NATIVE_REQ is sent at services-discovered and wakes the measurement engine.
+   26509 is the keepalive heartbeat. */
+function rawFrame(opcode,payload,seq=nextSeq()){const h=new Uint8Array(8),dv=new DataView(h.buffer);
+  dv.setUint8(0,MAGIC);dv.setUint8(1,0);dv.setUint16(2,payload.length+8,false);dv.setUint16(4,opcode,false);dv.setUint16(6,seq,false);return cat(h,payload)}
+function nativeReqFrame(){return rawFrame(26505,new Uint8Array([0x19]))}
+function heartbeatFrame(){const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,Date.now()>>>0,false);return rawFrame(26509,b)}
+/* WeChat AirSync replies: the clip asks to log in (10001) and to init (10003). Echo its seq. */
+function airHdr(body,ch,seq){const h=new Uint8Array(8),dv=new DataView(h.buffer);dv.setUint8(0,MAGIC);dv.setUint8(1,1);dv.setUint16(2,body.length+8,false);dv.setUint16(4,ch,false);dv.setUint16(6,seq,false);return cat(h,body)}
+function crc32(b){let c,t=[];for(let n=0;n<256;n++){c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}let r=0xFFFFFFFF;for(const x of b)r=t[(r^x)&255]^(r>>>8);return(r^0xFFFFFFFF)>>>0}
+function authResp(seq){return airHdr(new Uint8Array([0x0a,2,8,0,0x12,0]),20001,seq)}
+function initResp(seq,chal){let b=new Uint8Array([0x0a,2,8,0,0x10,0,0x18,0]);if(chal&&chal.length)b=cat(b,new Uint8Array([0x20]),uvarint(crc32(chal)));return airHdr(b,20003,seq)}
+function pbFields(b){const o={};let i=0;const vi=()=>{let v=0,s=0,c;do{c=b[i++];v+=(c&0x7f)*2**s;s+=7}while(c&0x80);return v};
+  while(i<b.length){const key=vi(),f=Math.floor(key/8),wt=key&7;
+    if(wt===0)o[f]=vi();else if(wt===2){const n=vi();o[f]=b.slice(i,i+n);i+=n}else if(wt===5){o[f]=b.slice(i,i+4);i+=4}else if(wt===1){o[f]=b.slice(i,i+8);i+=8}else break}
+  return o}
+/* the clip only accepts writes of 20 bytes or less: split like the app does */
+async function send(label,f){rlog('TX '+label,hx(f));for(let i=0;i<f.length;i+=20)await LIVE.fec7.writeValueWithResponse(f.slice(i,i+20))}
 
-<h2>Principles</h2>
-<div id="principles">&nbsp;</div>
-
-<hr class="sep">
-
-<h2>This year, by Dec 2026</h2>
-
-<h3>Spiritual</h3>
-<ul class="g">
-  <li>Execute morning, evening, and office routines every day.</li>
-  <li>Word and prayer from 5:15 to 6:00.</li>
-  <li>Fast to intercede for people on Tuesday mornings.</li>
-  <li>Memorize Colossians by September 1.</li>
-  <li>Unhurried, enjoyable communion with God.</li>
-</ul>
-
-<h3>Marriage and family</h3>
-<ul class="g">
-  <li>Close up work on time and be available for Ruthie.</li>
-  <li>Support Ruthie in her pregnancy and birth.</li>
-  <li>Family devotions at breakfast, 3 to 5 times a week.</li>
-  <li>Ruthie feels pursued, supported, and spiritually led.</li>
-  <li>Build peer friendships outside of Trinity.</li>
-</ul>
-
-<h3>Body and money</h3>
-<ul class="g">
-  <li>Work out 4 to 6 times a week.</li>
-  <li>Monthly budget review with Ruthie; reconcile biweekly.</li>
-  <li>Three months of emergency savings.</li>
-  <li>$40 a month from coaching. Record 3 HOF episodes.</li>
-</ul>
-
-<h3>Leadership</h3>
-<ul class="g">
-  <li>Three deep dives: trust, communication, spiritual health.</li>
-  <li>One week ahead of speaking engagements by October 1.</li>
-  <li>Meet monthly with 2 men for leadership development.</li>
-  <li>Anki flashcards 3 times a day.</li>
-</ul>
-
-<h2>Three years, by Dec 2028</h2>
-<ul class="g">
-  <li>Daily undistracted Word and prayer; Hebrew and Greek with growing fluency.</li>
-  <li>Colossians and James memorized and reviewed.</li>
-  <li>Family devotions 3 times a week; marriage marked by laughter and mission.</li>
-  <li>In bed by 9:15; exercise 3 or more times a week; best shape in 5 years.</li>
-  <li>Two weeks ahead in sermon prep; preaching sharper and weightier.</li>
-  <li>Leadership track in place; movement gaining traction in Edwardsburg.</li>
-</ul>
-
-<h2>Ten years, by Dec 2035</h2>
-<ul class="g">
-  <li>The congregation is full and fed.</li>
-  <li>Two months ahead on preaching and speaking.</li>
-  <li>Multiplying healthy, mature leaders.</li>
-  <li>Six books of the Bible memorized; working Greek and Hebrew regained.</li>
-  <li>Energy to play with the kids; body well stewarded.</li>
-  <li>$10,000 a year in side income, capped at two hours a week.</li>
-</ul>
-
-<p class="foot">I live in the way I shall wish I had, when I come to die.</p>
-
-<script type="text/javascript">
-var MONTHS = ["January","February","March","April","May","June",
-  "July","August","September","October","November","December"];
-var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-
-var PLAN = {
-"1-1":["Gen 1","Matt 1","Ezra 1","Acts 1"],
-"1-2":["Gen 2","Matt 2","Ezra 2","Acts 2"],
-"1-3":["Gen 3","Matt 3","Ezra 3","Acts 3"],
-"1-4":["Gen 4","Matt 4","Ezra 4","Acts 4"],
-"1-5":["Gen 5","Matt 5","Ezra 5","Acts 5"],
-"1-6":["Gen 6","Matt 6","Ezra 6","Acts 6"],
-"1-7":["Gen 7","Matt 7","Ezra 7","Acts 7"],
-"1-8":["Gen 8","Matt 8","Ezra 8","Acts 8"],
-"1-9":["Gen 9-10","Matt 9","Ezra 9","Acts 9"],
-"1-10":["Gen 11","Matt 10","Ezra 10","Acts 10"],
-"1-11":["Gen 12","Matt 11","Neh 1","Acts 11"],
-"1-12":["Gen 13","Matt 12","Neh 2","Acts 12"],
-"1-13":["Gen 14","Matt 13","Neh 3","Acts 13"],
-"1-14":["Gen 15","Matt 14","Neh 4","Acts 14"],
-"1-15":["Gen 16","Matt 15","Neh 5","Acts 15"],
-"1-16":["Gen 17","Matt 16","Neh 6","Acts 16"],
-"1-17":["Gen 18","Matt 17","Neh 7","Acts 17"],
-"1-18":["Gen 19","Matt 18","Neh 8","Acts 18"],
-"1-19":["Gen 20","Matt 19","Neh 9","Acts 19"],
-"1-20":["Gen 21","Matt 20","Neh 10","Acts 20"],
-"1-21":["Gen 22","Matt 21","Neh 11","Acts 21"],
-"1-22":["Gen 23","Matt 22","Neh 12","Acts 22"],
-"1-23":["Gen 24","Matt 23","Neh 13","Acts 23"],
-"1-24":["Gen 25","Matt 24","Est 1","Acts 24"],
-"1-25":["Gen 26","Matt 25","Est 2","Acts 25"],
-"1-26":["Gen 27","Matt 26","Est 3","Acts 26"],
-"1-27":["Gen 28","Matt 27","Est 4","Acts 27"],
-"1-28":["Gen 29","Matt 28","Est 5","Acts 28"],
-"1-29":["Gen 30","Mark 1","Est 6","Rom 1"],
-"1-30":["Gen 31","Mark 2","Est 7","Rom 2"],
-"1-31":["Gen 32","Mark 3","Est 8","Rom 3"],
-"2-1":["Gen 33","Mark 4","Est 9-10","Rom 4"],
-"2-2":["Gen 34","Mark 5","Job 1","Rom 5"],
-"2-3":["Gen 35-36","Mark 6","Job 2","Rom 6"],
-"2-4":["Gen 37","Mark 7","Job 3","Rom 7"],
-"2-5":["Gen 38","Mark 8","Job 4","Rom 8"],
-"2-6":["Gen 39","Mark 9","Job 5","Rom 9"],
-"2-7":["Gen 40","Mark 10","Job 6","Rom 10"],
-"2-8":["Gen 41","Mark 11","Job 7","Rom 11"],
-"2-9":["Gen 42","Mark 12","Job 8","Rom 12"],
-"2-10":["Gen 43","Mark 13","Job 9","Rom 13"],
-"2-11":["Gen 44","Mark 14","Job 10","Rom 14"],
-"2-12":["Gen 45","Mark 15","Job 11","Rom 15"],
-"2-13":["Gen 46","Mark 16","Job 12","Rom 16"],
-"2-14":["Gen 47","Luke 1:1-38","Job 13","1 Cor 1"],
-"2-15":["Gen 48","Luke 1:39-80","Job 14","1 Cor 2"],
-"2-16":["Gen 49","Luke 2","Job 15","1 Cor 3"],
-"2-17":["Gen 50","Luke 3","Job 16-17","1 Cor 4"],
-"2-18":["Ex 1","Luke 4","Job 18","1 Cor 5"],
-"2-19":["Ex 2","Luke 5","Job 19","1 Cor 6"],
-"2-20":["Ex 3","Luke 6","Job 20","1 Cor 7"],
-"2-21":["Ex 4","Luke 7","Job 21","1 Cor 8"],
-"2-22":["Ex 5","Luke 8","Job 22","1 Cor 9"],
-"2-23":["Ex 6","Luke 9","Job 23","1 Cor 10"],
-"2-24":["Ex 7","Luke 10","Job 24","1 Cor 11"],
-"2-25":["Ex 8","Luke 11","Job 25-26","1 Cor 12"],
-"2-26":["Ex 9","Luke 12","Job 27","1 Cor 13"],
-"2-27":["Ex 10","Luke 13","Job 28","1 Cor 14"],
-"2-28":["Ex 11","Luke 14","Job 29","1 Cor 15"],
-"3-1":["Ex 12","Luke 15","Job 30","1 Cor 16"],
-"3-2":["Ex 13","Luke 16","Job 31","2 Cor 1"],
-"3-3":["Ex 14","Luke 17","Job 32","2 Cor 2"],
-"3-4":["Ex 15","Luke 18","Job 33","2 Cor 3"],
-"3-5":["Ex 16","Luke 19","Job 34","2 Cor 4"],
-"3-6":["Ex 17","Luke 20","Job 35","2 Cor 5"],
-"3-7":["Ex 18","Luke 21","Job 36","2 Cor 6"],
-"3-8":["Ex 19","Luke 22","Job 37","2 Cor 7"],
-"3-9":["Ex 20","Luke 23","Job 38","2 Cor 8"],
-"3-10":["Ex 21","Luke 24","Job 39","2 Cor 9"],
-"3-11":["Ex 22","John 1","Job 40","2 Cor 10"],
-"3-12":["Ex 23","John 2","Job 41","2 Cor 11"],
-"3-13":["Ex 24","John 3","Job 42","2 Cor 12"],
-"3-14":["Ex 25","John 4","Prov 1","2 Cor 13"],
-"3-15":["Ex 26","John 5","Prov 2","Gal 1"],
-"3-16":["Ex 27","John 6","Prov 3","Gal 2"],
-"3-17":["Ex 28","John 7","Prov 4","Gal 3"],
-"3-18":["Ex 29","John 8","Prov 5","Gal 4"],
-"3-19":["Ex 30","John 9","Prov 6","Gal 5"],
-"3-20":["Ex 31","John 10","Prov 7","Gal 6"],
-"3-21":["Ex 32","John 11","Prov 8","Eph 1"],
-"3-22":["Ex 33","John 12","Prov 9","Eph 2"],
-"3-23":["Ex 34","John 13","Prov 10","Eph 3"],
-"3-24":["Ex 35","John 14","Prov 11","Eph 4"],
-"3-25":["Ex 36","John 15","Prov 12","Eph 5"],
-"3-26":["Ex 37","John 16","Prov 13","Eph 6"],
-"3-27":["Ex 38","John 17","Prov 14","Phil 1"],
-"3-28":["Ex 39","John 18","Prov 15","Phil 2"],
-"3-29":["Ex 40","John 19","Prov 16","Phil 3"],
-"3-30":["Lev 1","John 20","Prov 17","Phil 4"],
-"3-31":["Lev 2-3","John 21","Prov 18","Col 1"],
-"4-1":["Lev 4","Ps 1-2","Prov 19","Col 2"],
-"4-2":["Lev 5","Ps 3-4","Prov 20","Col 3"],
-"4-3":["Lev 6","Ps 5-6","Prov 21","Col 4"],
-"4-4":["Lev 7","Ps 7-8","Prov 22","1 Thes 1"],
-"4-5":["Lev 8","Ps 9","Prov 23","1 Thes 2"],
-"4-6":["Lev 9","Ps 10","Prov 24","1 Thes 3"],
-"4-7":["Lev 10","Ps 11-12","Prov 25","1 Thes 4"],
-"4-8":["Lev 11-12","Ps 13-14","Prov 26","1 Thes 5"],
-"4-9":["Lev 13","Ps 15-16","Prov 27","2 Thes 1"],
-"4-10":["Lev 14","Ps 17","Prov 28","2 Thes 2"],
-"4-11":["Lev 15","Ps 18","Prov 29","2 Thes 3"],
-"4-12":["Lev 16","Ps 19","Prov 30","1 Tim 1"],
-"4-13":["Lev 17","Ps 20-21","Prov 31","1 Tim 2"],
-"4-14":["Lev 18","Ps 22","Eccl 1","1 Tim 3"],
-"4-15":["Lev 19","Ps 23-24","Eccl 2","1 Tim 4"],
-"4-16":["Lev 20","Ps 25","Eccl 3","1 Tim 5"],
-"4-17":["Lev 21","Ps 26-27","Eccl 4","1 Tim 6"],
-"4-18":["Lev 22","Ps 28-29","Eccl 5","2 Tim 1"],
-"4-19":["Lev 23","Ps 30","Eccl 6","2 Tim 2"],
-"4-20":["Lev 24","Ps 31","Eccl 7","2 Tim 3"],
-"4-21":["Lev 25","Ps 32","Eccl 8","2 Tim 4"],
-"4-22":["Lev 26","Ps 33","Eccl 9","Titus 1"],
-"4-23":["Lev 27","Ps 34","Eccl 10","Titus 2"],
-"4-24":["Num 1","Ps 35","Eccl 11","Titus 3"],
-"4-25":["Num 2","Ps 36","Eccl 12","Phm 1"],
-"4-26":["Num 3","Ps 37","Sng 1","Heb 1"],
-"4-27":["Num 4","Ps 38","Sng 2","Heb 2"],
-"4-28":["Num 5","Ps 39","Sng 3","Heb 3"],
-"4-29":["Num 6","Ps 40-41","Sng 4","Heb 4"],
-"4-30":["Num 7","Ps 42-43","Sng 5","Heb 5"],
-"5-1":["Num 8","Ps 44","Sng 6","Heb 6"],
-"5-2":["Num 9","Ps 45","Sng 7","Heb 7"],
-"5-3":["Num 10","Ps 46-47","Sng 8","Heb 8"],
-"5-4":["Num 11","Ps 48","Isa 1","Heb 9"],
-"5-5":["Num 12-13","Ps 49","Isa 2","Heb 10"],
-"5-6":["Num 14","Ps 50","Isa 3-4","Heb 11"],
-"5-7":["Num 15","Ps 51","Isa 5","Heb 12"],
-"5-8":["Num 16","Ps 52-54","Isa 6","Heb 13"],
-"5-9":["Num 17-18","Ps 55","Isa 7","Jas 1"],
-"5-10":["Num 19","Ps 56-57","Isa 8","Jas 2"],
-"5-11":["Num 20","Ps 58-59","Isa 9","Jas 3"],
-"5-12":["Num 21","Ps 60-61","Isa 10","Jas 4"],
-"5-13":["Num 22","Ps 62-63","Isa 11-12","Jas 5"],
-"5-14":["Num 23","Ps 64-65","Isa 13","1 Pet 1"],
-"5-15":["Num 24","Ps 66-67","Isa 14","1 Pet 2"],
-"5-16":["Num 25","Ps 68","Isa 15","1 Pet 3"],
-"5-17":["Num 26","Ps 69","Isa 16","1 Pet 4"],
-"5-18":["Num 27","Ps 70-71","Isa 17-18","1 Pet 5"],
-"5-19":["Num 28","Ps 72","Isa 19-20","2 Pet 1"],
-"5-20":["Num 29","Ps 73","Isa 21","2 Pet 2"],
-"5-21":["Num 30","Ps 74","Isa 22","2 Pet 3"],
-"5-22":["Num 31","Ps 75-76","Isa 23","1 Jn 1"],
-"5-23":["Num 32","Ps 77","Isa 24","1 Jn 2"],
-"5-24":["Num 33","Ps 78:1-39","Isa 25","1 Jn 3"],
-"5-25":["Num 34","Ps 78:40-72","Isa 26","1 Jn 4"],
-"5-26":["Num 35","Ps 79","Isa 27","1 Jn 5"],
-"5-27":["Num 36","Ps 80","Isa 28","2 Jn 1"],
-"5-28":["Deut 1","Ps 81-82","Isa 29","3 Jn 1"],
-"5-29":["Deut 2","Ps 83-84","Isa 30","Jude 1"],
-"5-30":["Deut 3","Ps 85","Isa 31","Rev 1"],
-"5-31":["Deut 4","Ps 86-87","Isa 32","Rev 2"],
-"6-1":["Deut 5","Ps 88","Isa 33","Rev 3"],
-"6-2":["Deut 6","Ps 89","Isa 34","Rev 4"],
-"6-3":["Deut 7","Ps 90","Isa 35","Rev 5"],
-"6-4":["Deut 8","Ps 91","Isa 36","Rev 6"],
-"6-5":["Deut 9","Ps 92-93","Isa 37","Rev 7"],
-"6-6":["Deut 10","Ps 94","Isa 38","Rev 8"],
-"6-7":["Deut 11","Ps 95-96","Isa 39","Rev 9"],
-"6-8":["Deut 12","Ps 97-98","Isa 40","Rev 10"],
-"6-9":["Deut 13-14","Ps 99-101","Isa 41","Rev 11"],
-"6-10":["Deut 15","Ps 102","Isa 42","Rev 12"],
-"6-11":["Deut 16","Ps 103","Isa 43","Rev 13"],
-"6-12":["Deut 17","Ps 104","Isa 44","Rev 14"],
-"6-13":["Deut 18","Ps 105","Isa 45","Rev 15"],
-"6-14":["Deut 19","Ps 106","Isa 46","Rev 16"],
-"6-15":["Deut 20","Ps 107","Isa 47","Rev 17"],
-"6-16":["Deut 21","Ps 108-109","Isa 48","Rev 18"],
-"6-17":["Deut 22","Ps 110-111","Isa 49","Rev 19"],
-"6-18":["Deut 23","Ps 112-113","Isa 50","Rev 20"],
-"6-19":["Deut 24","Ps 114-115","Isa 51","Rev 21"],
-"6-20":["Deut 25","Ps 116","Isa 52","Rev 22"],
-"6-21":["Deut 26","Ps 117-118","Isa 53","Matt 1"],
-"6-22":["Deut 27","Ps119:1-24","Isa 54","Matt 2"],
-"6-23":["Deut 28","Ps119:25-48","Isa 55","Matt 3"],
-"6-24":["Deut 29","Ps119:49-72","Isa 56","Matt 4"],
-"6-25":["Deut 30","Ps119:73-96","Isa 57","Matt 5"],
-"6-26":["Deut 31","119:97-120","Isa 58","Matt 6"],
-"6-27":["Deut 32","119:121-144","Isa 59","Matt 7"],
-"6-28":["Deut 33-34","119:145-176","Isa 60","Matt 8"],
-"6-29":["Josh 1","Ps 120-122","Isa 61","Matt 9"],
-"6-30":["Josh 2","Ps 123-125","Isa 62","Matt 10"],
-"7-1":["Josh 3","Ps 126-128","Isa 63","Matt 11"],
-"7-2":["Josh 4","Ps 129-131","Isa 64","Matt 12"],
-"7-3":["Josh 5","Ps 132-134","Isa 65","Matt 13"],
-"7-4":["Josh 6","Ps 135-136","Isa 66","Matt 14"],
-"7-5":["Josh 7","Ps 137-138","Jer 1","Matt 15"],
-"7-6":["Josh 8","Ps 139","Jer 2","Matt 16"],
-"7-7":["Josh 9","Ps 140-141","Jer 3","Matt 17"],
-"7-8":["Josh 10","Ps 142-143","Jer 4","Matt 18"],
-"7-9":["Josh 11","Ps 144","Jer 5","Matt 19"],
-"7-10":["Josh 12-13","Ps 145","Jer 6","Matt 20"],
-"7-11":["Josh 14-15","Ps 146-147","Jer 7","Matt 21"],
-"7-12":["Josh 16-17","Ps 148","Jer 8","Matt 22"],
-"7-13":["Josh 18-19","Ps 149-150","Jer 9","Matt 23"],
-"7-14":["Josh 20-21","Acts 1","Jer 10","Matt 24"],
-"7-15":["Josh 22","Acts 2","Jer 11","Matt 25"],
-"7-16":["Josh 23","Acts 3","Jer 12","Matt 26"],
-"7-17":["Josh 24","Acts 4","Jer 13","Matt 27"],
-"7-18":["Judg 1","Acts 5","Jer 14","Matt 28"],
-"7-19":["Judg 2","Acts 6","Jer 15","Mark 1"],
-"7-20":["Judg 3","Acts 7","Jer 16","Mark 2"],
-"7-21":["Judg 4","Acts 8","Jer 17","Mark 3"],
-"7-22":["Judg 5","Acts 9","Jer 18","Mark 4"],
-"7-23":["Judg 6","Acts 10","Jer 19","Mark 5"],
-"7-24":["Judg 7","Acts 11","Jer 20","Mark 6"],
-"7-25":["Judg 8","Acts 12","Jer 21","Mark 7"],
-"7-26":["Judg 9","Acts 13","Jer 22","Mark 8"],
-"7-27":["Judg 10","Acts 14","Jer 23","Mark 9"],
-"7-28":["Judg 11","Acts 15","Jer 24","Mark 10"],
-"7-29":["Judg 12","Acts 16","Jer 25","Mark 11"],
-"7-30":["Judg 13","Acts 17","Jer 26","Mark 12"],
-"7-31":["Judg 14","Acts 18","Jer 27","Mark 13"],
-"8-1":["Judg 15","Acts 19","Jer 28","Mark 14"],
-"8-2":["Judg 16","Acts 20","Jer 29","Mark 15"],
-"8-3":["Judg 17","Acts 21","Jer 30-31","Mark 16"],
-"8-4":["Judg 18","Acts 22","Jer 32","Ps 1-2"],
-"8-5":["Judg 19","Acts 23","Jer 33","Ps 3-4"],
-"8-6":["Judg 20","Acts 24","Jer 34","Ps 5-6"],
-"8-7":["Judg 21","Acts 25","Jer 35","Ps 7-8"],
-"8-8":["Ruth 1","Acts 26","Jer 36","Ps 9"],
-"8-9":["Ruth 2","Acts 27","Jer 37","Ps 10"],
-"8-10":["Ruth 3-4","Acts 28","Jer 38","Ps 11-12"],
-"8-11":["1 Sam 1","Rom 1","Jer 39","Ps 13-14"],
-"8-12":["1 Sam 2","Rom 2","Jer 40","Ps 15-16"],
-"8-13":["1 Sam 3","Rom 3","Jer 41","Ps 17"],
-"8-14":["1 Sam 4","Rom 4","Jer 42","Ps 18"],
-"8-15":["1 Sam 5-6","Rom 5","Jer 43","Ps 19"],
-"8-16":["1 Sam 7-8","Rom 6","Jer 44-45","Ps 20-21"],
-"8-17":["1 Sam 9","Rom 7","Jer 46","Ps 22"],
-"8-18":["1 Sam 10","Rom 8","Jer 47","Ps 23-24"],
-"8-19":["1 Sam 11","Rom 9","Jer 48","Ps 25"],
-"8-20":["1 Sam 12","Rom 10","Jer 49","Ps 26-27"],
-"8-21":["1 Sam 13","Rom 11","Jer 50","Ps 28-29"],
-"8-22":["1 Sam 14","Rom 12","Jer 51","Ps 30"],
-"8-23":["1 Sam 15","Rom 13","Jer 52","Ps 31"],
-"8-24":["1 Sam 16","Rom 14","Lam 1","Ps 32"],
-"8-25":["1 Sam 17","Rom 15","Lam 2","Ps 33"],
-"8-26":["1 Sam 18","Rom 16","Lam 3","Ps 34"],
-"8-27":["1 Sam 19","1 Cor 1","Lam 4","Ps 35"],
-"8-28":["1 Sam 20","1 Cor 2","Lam 5","Ps 36"],
-"8-29":["1 Sam 21-22","1 Cor 3","Ezek 1","Ps 37"],
-"8-30":["1 Sam 23","1 Cor 4","Ezek 2","Ps 38"],
-"8-31":["1 Sam 24","1 Cor 5","Ezek 3","Ps 39"],
-"9-1":["1 Sam 25","1 Cor 6","Ezek 4","Ps 40-41"],
-"9-2":["1 Sam 26","1 Cor 7","Ezek 5","Ps 42-43"],
-"9-3":["1 Sam 27","1 Cor 8","Ezek 6","Ps 44"],
-"9-4":["1 Sam 28","1 Cor 9","Ezek 7","Ps 45"],
-"9-5":["1 Sam 29-30","1 Cor 10","Ezek 8","Ps 46-47"],
-"9-6":["1 Sam 31","1 Cor 11","Ezek 9","Ps 48"],
-"9-7":["2 Sam 1","1 Cor 12","Ezek 10","Ps 49"],
-"9-8":["2 Sam 2","1 Cor 13","Ezek 11","Ps 50"],
-"9-9":["2 Sam 3","1 Cor 14","Ezek 12","Ps 51"],
-"9-10":["2 Sam 4-5","1 Cor 15","Ezek 13","Ps 52-54"],
-"9-11":["2 Sam 6","1 Cor 16","Ezek 14","Ps 55"],
-"9-12":["2 Sam 7","2 Cor 1","Ezek 15","Ps 56-57"],
-"9-13":["2 Sam 8-9","2 Cor 2","Ezek 16","Ps 58-59"],
-"9-14":["2 Sam 10","2 Cor 3","Ezek 17","Ps 60-61"],
-"9-15":["2 Sam 11","2 Cor 4","Ezek 18","Ps 62-63"],
-"9-16":["2 Sam 12","2 Cor 5","Ezek 19","Ps 64-65"],
-"9-17":["2 Sam 13","2 Cor 6","Ezek 20","Ps 66-67"],
-"9-18":["2 Sam 14","2 Cor 7","Ezek 21","Ps 68"],
-"9-19":["2 Sam 15","2 Cor 8","Ezek 22","Ps 69"],
-"9-20":["2 Sam 16","2 Cor 9","Ezek 23","Ps 70-71"],
-"9-21":["2 Sam 17","2 Cor 10","Ezek 24","Ps 72"],
-"9-22":["2 Sam 18","2 Cor 11","Ezek 25","Ps 73"],
-"9-23":["2 Sam 19","2 Cor 12","Ezek 26","Ps 74"],
-"9-24":["2 Sam 20","2 Cor 13","Ezek 27","Ps 75-76"],
-"9-25":["2 Sam 21","Gal 1","Ezek 28","Ps 77"],
-"9-26":["2 Sam 22","Gal 2","Ezek 29","Ps 78:1-37"],
-"9-27":["2 Sam 23","Gal 3","Ezek 30","Ps 78:38-72"],
-"9-28":["2 Sam 24","Gal 4","Ezek 31","Ps 79"],
-"9-29":["1 Kgs 1","Gal 5","Ezek 32","Ps 80"],
-"9-30":["1 Kgs 2","Gal 6","Ezek 33","Ps 81-82"],
-"10-1":["1 Kgs 3","Eph 1","Ezek 34","Ps 83-84"],
-"10-2":["1 Kgs 4-5","Eph 2","Ezek 35","Ps 85"],
-"10-3":["1 Kgs 6","Eph 3","Ezek 36","Ps 86"],
-"10-4":["1 Kgs 7","Eph 4","Ezek 37","Ps 87-88"],
-"10-5":["1 Kgs 8","Eph 5","Ezek 38","Ps 89"],
-"10-6":["1 Kgs 9","Eph 6","Ezek 39","Ps 90"],
-"10-7":["1 Kgs 10","Phil 1","Ezek 40","Ps 91"],
-"10-8":["1 Kgs 11","Phil 2","Ezek 41","Ps 92-93"],
-"10-9":["1 Kgs 12","Phil 3","Ezek 42","Ps 94"],
-"10-10":["1 Kgs 13","Phil 4","Ezek 43","Ps 95-96"],
-"10-11":["1 Kgs 14","Col 1","Ezek 44","Ps 97-98"],
-"10-12":["1 Kgs 15","Col 2","Ezek 45","Ps 99-101"],
-"10-13":["1 Kgs 16","Col 3","Ezek 46","Ps 102"],
-"10-14":["1 Kgs 17","Col 4","Ezek 47","Ps 103"],
-"10-15":["1 Kgs 18","1 Thes 1","Ezek 48","Ps 104"],
-"10-16":["1 Kgs 19","1 Thes 2","Dan 1","Ps 105"],
-"10-17":["1 Kgs 20","1 Thes 3","Dan 2","Ps 106"],
-"10-18":["1 Kgs 21","1 Thes 4","Dan 3","Ps 107"],
-"10-19":["1 Kgs 22","1 Thes 5","Dan 4","Ps 108-109"],
-"10-20":["2 Kgs 1","2 Thes 1","Dan 5","Ps 110-111"],
-"10-21":["2 Kgs 2","2 Thes 2","Dan 6","Ps 112-113"],
-"10-22":["2 Kgs 3","2 Thes 3","Dan 7","Ps 114-115"],
-"10-23":["2 Kgs 4","1 Tim 1","Dan 8","Ps 116"],
-"10-24":["2 Kgs 5","1 Tim 2","Dan 9","Ps 117-118"],
-"10-25":["2 Kgs 6","1 Tim 3","Dan 10","Ps 119:1-24"],
-"10-26":["2 Kgs 7","1 Tim 4","Dan 11","Ps 119:25-48"],
-"10-27":["2 Kgs 8","1 Tim 5","Dan 12","Ps 119:49-72 301."],
-"10-28":["2 Kgs 9","1 Tim 6","Hos 1","Ps 119:73-96"],
-"10-29":["2 Kgs 10-11","2 Tim 1","Hos 2","Ps 119:97-120"],
-"10-30":["2 Kgs 12","2 Tim 2","Hos 3-4","Ps 119:121-144"],
-"10-31":["2 Kgs 13","2 Tim 3","Hos 5-6","Ps 119:145-176"],
-"11-1":["2 Kgs 14","2 Tim 4","Hos 7","Ps 120-122"],
-"11-2":["2 Kgs 15","Titus 1","Hos 8","Ps 123-125"],
-"11-3":["2 Kgs 16","Titus 2","Hos 9","Ps 126-128"],
-"11-4":["2 Kgs 17","Titus 3","Hos 10","Ps 129-131"],
-"11-5":["2 Kgs 18","Phm 1","Hos 11","Ps 132-134"],
-"11-6":["2 Kgs 19","Heb 1","Hos 12","Ps 135-136"],
-"11-7":["2 Kgs 20","Heb 2","Hos 13","Ps 137-138"],
-"11-8":["2 Kgs 21","Heb 3","Hos 14","Ps 139"],
-"11-9":["2 Kgs 22","Heb 4","Joel 1","Ps 140-141"],
-"11-10":["2 Kgs 23","Heb 5","Joel 2","Ps 142"],
-"11-11":["2 Kgs 24","Heb 6","Joel 3","Ps 143"],
-"11-12":["2 Kgs 25","Heb 7","Amos 1","Ps 144"],
-"11-13":["1 Chr 1-2","Heb 8","Amos 2","Ps 145"],
-"11-14":["1 Chr 3-4","Heb 9","Amos 3","Ps 146-147"],
-"11-15":["1 Chr 5-6","Heb 10","Amos 4","Ps 148-150"],
-"11-16":["1 Chr 7-8","Heb 11","Amos 5","Lk 1:1-38"],
-"11-17":["1 Chr 9-10","Heb 12","Amos 6","Lk 1:39-80"],
-"11-18":["1 Chr 11-12","Heb 13","Amos 7","Lk 2"],
-"11-19":["1 Chr 13-14","Jas 1","Amos 8","Lk 3"],
-"11-20":["1 Chr 15","Jas 2","Amos 9","Lk 4"],
-"11-21":["1 Chr 16","Jas 3","Obad 1","Lk 5"],
-"11-22":["1 Chr 17","Jas 4","Jonah 1","Lk 6"],
-"11-23":["1 Chr 18","Jas 5","Jonah 2","Lk 7"],
-"11-24":["1 Chr 19-20","1 Pet 1","Jonah 3","Lk 8"],
-"11-25":["1 Chr 21","1 Pet 2","Jonah 4","Lk 9"],
-"11-26":["1 Chr 22","1 Pet 3","Mic 1","Lk 10"],
-"11-27":["1 Chr 23","1 Pet 4","Mic 2","Lk 11"],
-"11-28":["1 Chr 24-25","1 Pet 5","Mic 3","Lk 12"],
-"11-29":["1 Chr 26-27","2 Pet 1","Mic 4","Lk 13"],
-"11-30":["1 Chr 28","2 Pet 2","Mic 5","Lk 14"],
-"12-1":["1 Chr 29","2 Pet 3","Mic 6","Lk 15"],
-"12-2":["2 Chr 1","1 Jn 1","Mic 7","Lk 16"],
-"12-3":["2 Chr 2","1 Jn 2","Nahum 1","Lk 17"],
-"12-4":["2 Chr 3-4","1 Jn 3","Nahum 2","Lk 18"],
-"12-5":["2 Chr 5","1 Jn 4","Nahum 3","Lk 19"],
-"12-6":["2 Chr 6","1 Jn 5","Hab 1","Lk 20"],
-"12-7":["2 Chr 7","2 Jn 1","Hab 2","Lk 21"],
-"12-8":["2 Chr 8","3 Jn 1","Hab 3","Jn 21"],
-"12-9":["2 Chr 9","Jude 1","Zeph 1","Lk 23"],
-"12-10":["2 Chr 10","Rev 1","Zeph 2","Lk 24"],
-"12-11":["2 Chr 11-12","Rev 2","Zeph 3","Jn 1"],
-"12-12":["2 Chr 13","Rev 3","Hag 1","Jn 2"],
-"12-13":["2 Chr 14-15","Rev 4","Hag 2","Jn 3"],
-"12-14":["2 Chr 16","Rev 5","Zech 1","Jn 4"],
-"12-15":["2 Chr 17","Rev 6","Zech 2","Jn 5"],
-"12-16":["2 Chr 18","Rev 7","Zech 3","Jn 6"],
-"12-17":["2 Chr 19-20","Rev 8","Zech 4","Jn 7"],
-"12-18":["2 Chr 21","Rev 9","Zech 5","Jn 8"],
-"12-19":["2 Chr 22-23","Rev 10","Zech 6","Jn 9"],
-"12-20":["2 Chr 24","Rev 11","Zech 7","Jn 10"],
-"12-21":["2 Chr 25","Rev 12","Zech 8","Jn 11"],
-"12-22":["2 Chr 26","Rev 13","Zech 9","Jn 12"],
-"12-23":["2 Chr 27-28","Rev 14","Zech 10","Jn 13"],
-"12-24":["2 Chr 29","Rev 15","Zech 11","Jn 14"],
-"12-25":["2 Chr 30","Rev 16","Zech 12","Jn 15"],
-"12-26":["2 Chr 31","Rev 17","Zech 13","Jn 16"],
-"12-27":["2 Chr 32","Rev 18","Zech 14","Jn 17"],
-"12-28":["2 Chr 33","Rev 19","Mal 1","Jn 18"],
-"12-29":["2 Chr 34","Rev 20","Mal 2","Jn 19"],
-"12-30":["2 Chr 35","Rev 21","Mal 3","Jn 20"],
-"12-31":["2 Chr 36","Rev 22","Mal 4","Jn 21"]
-};
-
-var PRINCIPLES = [
-  "Christ is the desire of my soul. I want him above everything else.",
-  "I am not condemned by my sins. I am right with God because Christ did what was right on my behalf.",
-  "I am not tolerated by God. I am celebrated, enjoyed, even danced over.",
-  "I do not hide my failures. I bring them to the light so that I can grow.",
-  "I do not get distracted. I focus on what matters most.",
-  "By being selectively obsessive, I enter into flow disproportionately more than my peers.",
-  "I grow at such a rate that my progress is evident to all.",
-  "It is a great day to be alive, because God is alive.",
-  "I wake up with purpose, direction, and meaning every day of my life.",
-  "I am disciplined. Christ in me is stronger than the sinful desires in me.",
-  "Pain is the path to strength.",
-  "I rejoice in suffering, because Christ's death ensures none of it is wasted.",
-  "Because of him, my faith is deeper, my family is closer, my body is stronger, my leadership is sharper.",
-  "I cultivate future leaders by identifying, training, and empowering faithful men.",
-  "I am not afraid to lead. I am not ashamed to follow.",
-  "I impact the world by beginning with my little corner of it.",
-  "I am becoming who God made me to be.",
-  "Two non-negotiables of life are unhurried time with God, and unhurried time with my family.",
-  "The most important work I will ever do is in the home.",
-  "Live near to God, lead your family well, and love the souls of men.",
-  "Others can and you cannot.",
-  "Seek to understand before being understood.",
-  "Be a warm demander. Call people up to excellence.",
-  "The work is the reward. Enjoy the activity for itself.",
-  "Be obsessed with the process, not the result.",
-  "God is not interested in what I can do for him. He is interested in me.",
-  "Do one thing relentlessly.",
-  "Do the hard thing.",
-  "Vision without discipline is a dreamer. Discipline without vision is drudgery.",
-  "My wife's greatest need is my own personal holiness.",
-  "Do what is meaningful, not convenient.",
-  "Live so as to be missed.",
-  "Keep your head. Do your work. Share in suffering and share the gospel.",
-  "God, grant me character greater than my gifts, and humility greater than my influence.",
-  "This is the last chance I will ever get to live on this day. Redeem the time."
-];
-
-function pad(n) { return n < 10 ? "0" + n : "" + n; }
-
-function run() {
-  var d = new Date();
-  var day = d.getDate();
-  var mon = d.getMonth();
-
-  var el = document.getElementById("today");
-  if (el) {
-    el.innerHTML = DAYS[d.getDay()] + ", " + MONTHS[mon] + " " + day + ", " + d.getFullYear();
-  }
-
-  var dv = document.getElementById("devotions");
-  if (dv) {
-    var wd = d.getDay();
-    var focus;
-    if (wd === 1 || wd === 3) {
-      focus = "Memorization and prayer list";
-    } else if (wd === 6) {
-      focus = "Bible reading plan, and add music";
-    } else {
-      focus = "Bible reading plan";
-    }
-    dv.innerHTML = "Devotions today: " + focus;
-  }
-
-  var rd = document.getElementById("reading");
-  var pkey = (mon + 1) + "-" + day;
-  if (rd && PLAN[pkey]) {
-    var r = PLAN[pkey];
-    var h = '<ul class="chk">';
-    var q;
-    for (q = 0; q < 4; q++) {
-      h += '<li><label><input type="checkbox" class="box" id="r' + (q + 1) + '">' + r[q] + '</label></li>';
-    }
-    h += '</ul>';
-    rd.innerHTML = h;
-  }
-
-  var pe = document.getElementById("principles");
-  if (pe) {
-    var n = PRINCIPLES.length;
-    var start = 0;
-    var jan1 = new Date(d.getFullYear(), 0, 1);
-    start = Math.floor((d - jan1) / 86400000) % n;
-    if (start < 0) { start = 0; }
-    var out = "";
-    var used = [];
-    var i = start;
-    var count = 0;
-    while (count < 3) {
-      out += '<p class="pr">' + PRINCIPLES[i] + '</p>';
-      i = (i + 11) % n;
-      count = count + 1;
-    }
-    pe.innerHTML = out;
-  }
-
-  var key = "m" + d.getFullYear() + pad(mon + 1) + pad(day);
-  var store = null;
-  try { store = window.localStorage; } catch (e) { store = null; }
-
-  var boxes = document.getElementsByTagName("input");
-  var j;
-  for (j = 0; j < boxes.length; j++) {
-    if (boxes[j].type !== "checkbox") { continue; }
-    if (store) {
-      try {
-        if (store.getItem(key + boxes[j].id) === "1") { boxes[j].checked = true; }
-      } catch (e2) {}
-      boxes[j].onclick = function () {
-        try { store.setItem(key + this.id, this.checked ? "1" : "0"); } catch (e3) {}
-      };
-    }
-  }
+/* ---- reassembly + routing ---- */
+let asm=null;
+function onNotify(ev){
+  const v=new Uint8Array(ev.target.value.buffer.slice(0));
+  if(!asm){
+    if(v[0]!==0xFE){rlog('RX stray',hx(v));return}
+    asm={total:(v[2]<<8)|v[3],parts:[v],got:v.length};
+  }else{asm.parts.push(v);asm.got+=v.length}
+  if(asm.got>=asm.total){const f=cat(...asm.parts).slice(0,asm.total);asm=null;handle(f).catch(e=>rlog('ERR '+e.message))}
+}
+const STATES={0:'recalculating',1:'not worn',2:'adapting to breathing',3:'in motion',4:'distracted',5:'calm',6:'focused',7:'stressed',8:'other',9:'fatigued',10:'flow'};
+async function handle(f){
+  const dv=new DataView(f.buffer),ch=dv.getUint16(4,false),seq=dv.getUint16(6,false),body=f.slice(8);
+  const uid=parseInt($('uid').value)||1,mac=$('mac').value.trim();
+  if(ch===10001){rlog('RX login request');await send('AUTH_RESP',authResp(seq));return}
+  if(ch===10003){const c=pbFields(body)[3];rlog('RX init request');await send('INIT_RESP',initResp(seq,c));await send('CHALLENGE',challengeFrame(uid,mac));return}
+  if(ch!==10002){rlog('RX ch='+ch,hx(body));return}
+  const data=pbFields(body)[2];if(!data||data.length<17){rlog('RX short',hx(body));return}
+  const idv=new DataView(data.buffer,data.byteOffset),ilen=idv.getUint16(1,true),cmd=idv.getUint16(3,true),err=idv.getUint16(5,true);
+  const p=data.slice(17,ilen);
+  if(cmd===27513){
+    rlog('RX status err='+err);
+    if(err===3||err===4){
+      LIVE.repairs=(LIVE.repairs||0)+1;
+      if(LIVE.repairs>2){rlog('Still not permitted. Hold the clip button, then reconnect.');return}
+      await send('BIND (re-pair)',bindFrame(uid,mac,true));await new Promise(r=>setTimeout(r,1000));await send('CHALLENGE',challengeFrame(uid,mac));return}
+    await clipStart(uid);return}
+  if(cmd===27505){rlog('RX button long-press');await send('BIND',bindFrame(uid,mac,false));await send('CHALLENGE',challengeFrame(uid,mac));return}
+  if(cmd===27540||cmd===27545){
+    onClipExtra(p);
+    if((p[1]&0xE0)===0x20)await clipStart(uid);
+    decodeRealtime(p);return}
+  if(cmd===27537&&p.length>=8){const v=new DataView(p.buffer,p.byteOffset);onClipFlags(v.getInt32(0,true),v.getInt32(4,true));return}
+  rlog('RX cmd '+cmd+' err='+err,hx(p));
+}
+async function clipStart(uid){if(LIVE.started)return;LIVE.started=true;await syncClip()}
+function s8(x){return x>127?x-256:x}
+function decodeRealtime(p){
+  if(p.length<21)return;
+  const st=p[1]&0x1F;
+  const d={currentState:st,stateName:STATES[st]||('state '+st),focusLevel:p[2],focus_depth:p[2],calm:s8(p[3]),signal:p[4],
+    signal_quality:new DataView(p.buffer,p.byteOffset).getInt16(13,true),breath:[]};
+  const pv=new DataView(p.buffer,p.byteOffset),ar1=pv.getInt16(5,true),ar3=pv.getInt16(9,true);
+  d.br=(d.signal>=100&&ar1>0)?+(ar1/100*60/57.6).toFixed(1):null;        // your breaths per minute now
+  d.brBase=ar3>0?+(ar3/100*60/57.6).toFixed(1):null;                       // the clip's baseline for you
+  LIVE.last=d;rlog('  '+d.stateName+'  focus='+d.focusLevel+' calm='+d.calm+' signal='+d.signal+' breath='+(d.br??'–')+'/min');
+  render(d);
 }
 
-if (window.addEventListener) {
-  window.addEventListener("load", run, false);
-} else if (window.attachEvent) {
-  window.attachEvent("onload", run);
-} else {
-  window.onload = run;
-}
-</script>
 
-</body>
-</html>
+/* =========================================================
+   APP: helpers, settings, connection, orb, sessions, journal
+   ========================================================= */
+const $=id=>document.getElementById(id);
+const hx=b=>[...b].map(x=>x.toString(16).padStart(2,'0')).join(' ');
+function rlog(...m){const el=$('rawlog');el.textContent+=new Date().toLocaleTimeString()+'  '+m.join(' ')+'\n';
+  if(el.textContent.length>200000)el.textContent=el.textContent.slice(-150000);el.scrollTop=el.scrollHeight}
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---- state model ---- */
+const CSS=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+// [label, primary, secondary] per clip state. 0-3 and 8 = not a usable reading.
+const LOOK={0:['recalculating','--idle','--idle'],1:['not worn','--idle','--idle'],2:['adapting to your breathing','--idle','--calm'],
+  3:['in motion','--idle','--idle'],4:['Distracted','--distracted','--distracted'],5:['Calm','--calm','--calm'],
+  6:['Focused','--focus','--focus'],7:['Stressed','--stress','--flow'],8:['–','--idle','--idle'],9:['Fatigued','--fatigue','--fatigue'],10:['Deep Flow','--flow','--calm']};
+const VALID=s=>s>=4&&s!==8;
+const FOCUSED=s=>s===6||s===10;
+const hex2rgb=h=>{h=h.replace('#','');return[0,2,4].map(i=>parseInt(h.slice(i,i+2),16))};
+const colorOf=s=>CSS((LOOK[s]||LOOK[8])[1]);
+
+/* ---- live state ---- */
+const NOW={state:null,focus:null,calm:null,signal:null,t:0};
+const recent=[];                       // [{t,s}] last 5 min for the timeline bar
+let session=null;                      // active work session
+let durMin=25;
+
+function render(d){                    // called by the BLE layer for each reading
+  const t=Date.now();
+  if(NOW.t&&t-NOW.t<300&&d.currentState===NOW.state&&d.focusLevel===NOW.focus)return; // drop duplicate notifications
+  Object.assign(NOW,{state:d.currentState,focus:d.focusLevel,calm:d.calm,signal:d.signal,br:d.br,t});
+  recent.push({t,s:d.currentState});while(recent.length&&t-recent[0].t>300000)recent.shift();
+  if(session)sessionSample(d,t);
+  if(train)trainSample(d,t);
+  paintLive();
+}
+function paintLive(){
+  if(RITUAL.on)return;
+  const s=NOW.state,look=LOOK[s]||LOOK[8];
+  $('pill').textContent='State: '+look[0];
+  $('pill').style.color=VALID(s)?colorOf(s):'var(--muted)';
+  $('pill').style.borderColor=VALID(s)?colorOf(s)+'66':'var(--line)';
+  $('mDepth').textContent=VALID(s)?NOW.focus:'–';
+  $('mCalm').textContent=NOW.br??'–';
+  orb.target(s,NOW.focus);
+  // timeline: 30 slots of 10 s
+  const tl=$('tl'),t=Date.now();let h='';
+  for(let i=29;i>=0;i--){const a=t-(i+1)*10000,b=t-i*10000;const seg=recent.filter(r=>r.t>=a&&r.t<b);
+    const s2=seg.length?mode(seg.map(r=>r.s)):null;h+=`<i style="background:${s2!==null&&VALID(s2)?colorOf(s2):'transparent'}"></i>`}
+  tl.innerHTML=h;
+}
+const mode=a=>{const c={};let m=a[0];for(const x of a){c[x]=(c[x]||0)+1;if(c[x]>c[m])m=x}return +m};
+
+/* =========================================================
+   ORB — fluid blobs clipped to a sphere, colour follows state
+   ========================================================= */
+const orb=(()=>{
+  const c=$('orb'),x=c.getContext('2d'),W=c.width,R=W*0.36,cx=W/2,cy=W/2;
+  let cur=[[75,79,87],[75,79,87]],tgt=cur.map(a=>a.slice()),energy=.3,tEnergy=.3;
+  const blobs=[...Array(7)].map((_,i)=>({a:Math.random()*6.28,b:Math.random()*6.28,sa:.15+Math.random()*.25,sb:.12+Math.random()*.2,r:.45+Math.random()*.35,k:i%2}));
+  function target(s,focus){const l=LOOK[s]||LOOK[8];tgt=[hex2rgb(CSS(l[1])),hex2rgb(CSS(l[2]))];
+    tEnergy=!VALID(s)?.25:s===4?.9:s===7?1.2:s===9?.35:s===10?.45:s===6?.55:.4;}
+  function frame(ts){
+    const t=ts/1000;
+    for(let k=0;k<2;k++)for(let j=0;j<3;j++)cur[k][j]+=(tgt[k][j]-cur[k][j])*.02;
+    energy+=(tEnergy-energy)*.01;
+    let breathe=1+.025*Math.sin(t*2*Math.PI/5.5);
+    if(RITUAL.on){const ph=ritualLevel(ts);breathe=.82+.3*ph.level;$('pill').textContent=ph.inhale?'Breathe in':'Breathe out';$('pill').style.color='var(--gold)'}
+    const r=R*breathe;
+    x.clearRect(0,0,W,W);
+    // outer glow
+    const [p0,p1,p2]=cur[0].map(Math.round);
+    const g=x.createRadialGradient(cx,cy,r*.6,cx,cy,r*1.45);
+    g.addColorStop(0,`rgba(${p0},${p1},${p2},.35)`);g.addColorStop(1,`rgba(${p0},${p1},${p2},0)`);
+    x.fillStyle=g;x.beginPath();x.arc(cx,cy,r*1.45,0,7);x.fill();
+    // body
+    x.save();x.beginPath();x.arc(cx,cy,r,0,7);x.clip();
+    x.fillStyle='#101114';x.fillRect(0,0,W,W);
+    x.globalCompositeOperation='lighter';x.filter='blur(26px)';
+    for(const b of blobs){
+      const sp=energy;b.a+=b.sa*.012*sp*3;b.b+=b.sb*.012*sp*3;
+      const px=cx+Math.cos(b.a)*r*.5+Math.sin(b.b*1.7)*r*.18,py=cy+Math.sin(b.b)*r*.5+Math.cos(b.a*1.3)*r*.18;
+      const col=cur[b.k].map(Math.round),rr=r*b.r;
+      const bg=x.createRadialGradient(px,py,0,px,py,rr);
+      bg.addColorStop(0,`rgba(${col},.75)`);bg.addColorStop(1,`rgba(${col},0)`);
+      x.fillStyle=bg;x.beginPath();x.arc(px,py,rr,0,7);x.fill();
+    }
+    // swirl lines, more chaotic when distracted/stressed
+    x.filter='blur(1.5px)';x.lineWidth=2.2;
+    for(let i=0;i<5;i++){const col=cur[i%2].map(Math.round);x.strokeStyle=`rgba(${col},.35)`;x.beginPath();
+      for(let a=0;a<=6.3;a+=.12){const w=Math.sin(a*3+t*.6*(1+energy)+i)*r*.12*energy+Math.sin(a*5-t*.4+i*2)*r*.05;
+        const rad=r*(.35+i*.11)+w,xx=cx+Math.cos(a+t*.08*(i%2?1:-1))*rad,yy=cy+Math.sin(a+t*.08*(i%2?1:-1))*rad;a?x.lineTo(xx,yy):x.moveTo(xx,yy)}
+      x.closePath();x.stroke()}
+    x.restore();x.filter='none';x.globalCompositeOperation='source-over';
+    // glass rim + highlight
+    const rim=x.createRadialGradient(cx,cy,r*.82,cx,cy,r);rim.addColorStop(0,'rgba(255,255,255,0)');rim.addColorStop(1,'rgba(255,255,255,.22)');
+    x.fillStyle=rim;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();
+    const hl=x.createRadialGradient(cx-r*.35,cy-r*.45,0,cx-r*.35,cy-r*.45,r*.5);hl.addColorStop(0,'rgba(255,255,255,.16)');hl.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=hl;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  return{target};
+})();
+
+/* =========================================================
+   CONNECTION (uses the protocol layer above)
+   ========================================================= */
+let wantConnected=false;
+async function setup(dev){
+  rlog('Connecting GATT…');const srv=await dev.gatt.connect();LIVE.server=srv;
+  const svc=await srv.getPrimaryService(SVC);
+  LIVE.fec7=await svc.getCharacteristic(FEC7);LIVE.started=false;LIVE.repairs=0;asm=null;
+  const uid=parseInt($('uid').value)||1,mac=$('mac').value.trim();
+  await send('NATIVE_REQ',nativeReqFrame());
+  const fed8=await svc.getCharacteristic(FED8);await fed8.startNotifications();fed8.addEventListener('characteristicvaluechanged',onNotify);
+  try{const fec8=await svc.getCharacteristic(FEC8);await fec8.startNotifications();fec8.addEventListener('characteristicvaluechanged',onNotify)}catch(e){}
+  await send('CHALLENGE',challengeFrame(uid,mac));
+  clearInterval(LIVE.poll);LIVE.poll=setInterval(()=>send('heartbeat',heartbeatFrame()).catch(()=>{}),22000);
+  clearInterval(LIVE.hist);LIVE.hist=setInterval(()=>streakHandshake().catch(()=>{}),10000);
+  setConn(true);
+}
+async function connect(){
+  if(!navigator.bluetooth){$('btwarn').hidden=false;return}
+  if(LIVE.connected){wantConnected=false;try{LIVE.device.gatt.disconnect()}catch(e){}return}
+  try{
+    const dev=await navigator.bluetooth.requestDevice({filters:[{services:[SVC]}],optionalServices:[SVC]});
+    LIVE.device=dev;wantConnected=true;
+    dev.addEventListener('gattserverdisconnected',onDisc);
+    await setup(dev);
+  }catch(e){rlog('ERROR '+e.message);setConn(false)}
+}
+async function onDisc(){
+  rlog('Disconnected.');setConn(false);clearInterval(LIVE.poll);
+  NOW.state=null;paintLive();
+  if(!wantConnected)return;
+  for(let i=1;i<=5&&wantConnected&&!LIVE.connected;i++){        // auto-reconnect, same device, no chooser
+    $('connTxt').textContent='Reconnecting…';await new Promise(r=>setTimeout(r,2000*i));
+    try{await setup(LIVE.device);rlog('Reconnected.');return}catch(e){rlog('Reconnect '+i+' failed: '+e.message)}
+  }
+  setConn(false);
+}
+function setConn(on){LIVE.connected=on;$('connBtn').classList.toggle('on',on);$('connTxt').textContent=on?'Clip connected'+(CLIP.batt?' · '+CLIP.batt+'%':''):'Connect clip';if(!on)clearInterval(LIVE.hist)}
+$('connBtn').onclick=connect;
+if(!navigator.bluetooth)$('btwarn').hidden=false;
+
+/* =========================================================
+   WORK SESSIONS
+   ========================================================= */
+$('durs').onclick=e=>{const b=e.target.closest('button');if(!b||session)return;
+  durMin=+b.dataset.m;[...$('durs').children].forEach(x=>x.classList.toggle('on',x===b));$('clock').textContent=durMin?fmt(durMin*60):'0:00'};
+const fmt=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
+
+$('startBtn').onclick=()=>RITUAL.on?endRitual(true):session?endSession():($('setRitual').value!=='0'?startRitual():startSession());
+/* one-minute pre-flow breath ritual: the orb paces your breathing, then the session starts on its own */
+const RITUAL={on:false,start:0,inF:.5,bpm:5.5,ph:0,last:0,tick:null};
+function startRitual(){
+  Object.assign(RITUAL,{on:true,start:Date.now(),inF:$('setRitual').value==='calm'?.4:.5,ph:0,last:0});
+  $('startBtn').textContent='Skip';$('clockSub').textContent='Settle in. Breathe with the orb. Then work on one thing.';
+  RITUAL.tick=setInterval(()=>{const left=60-(Date.now()-RITUAL.start)/1000;$('clock').textContent=fmt(left);if(left<=0)endRitual(true)},250);
+}
+function ritualLevel(ts){const dt=RITUAL.last?(ts-RITUAL.last)/1000:0;RITUAL.last=ts;RITUAL.ph=(RITUAL.ph+dt*RITUAL.bpm/60)%1;
+  const x=RITUAL.ph,f=RITUAL.inF;return x<f?{inhale:true,level:.5-.5*Math.cos(Math.PI*x/f)}:{inhale:false,level:.5+.5*Math.cos(Math.PI*(x-f)/(1-f))}}
+function endRitual(go){clearInterval(RITUAL.tick);RITUAL.on=false;paintLive();if(go){chime('ritual');startSession()}}
+function startSession(){
+  session={start:Date.now(),plan:durMin*60,samples:[],marks:[],distractSince:0,fatigueSince:0,lastAlert:0,alerts:0};$('marks').hidden=false;$('markCount').textContent='';
+  $('startBtn').textContent='End session';$('startBtn').classList.add('stop');
+  $('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';
+  if($('wsSound').checked){session.sound=true;session.mixC=0;sound.start();sound.mix(0,0)}
+  session.tick=setInterval(tickSession,1000);tickSession();
+  syncClip();
+}
+
+const inStruggle=()=>session&&(Date.now()-session.start)/1000<(+$('setStruggle').value||0)*60;
+const inDeep=()=>VALID(NOW.state)&&Date.now()-NOW.t<5000&&(FOCUSED(NOW.state)||NOW.focus>=75);
+function tickSession(){
+  const el=(Date.now()-session.start)/1000;
+  if(session.plan&&el>=session.plan&&session.held){            // overtime while in flow
+    $('clock').textContent='+'+fmt(el-session.plan);
+    if(inDeep())session.lostSince=0;else session.lostSince=session.lostSince||Date.now();
+    $('clockSub').textContent=session.lostSince?'Flow easing. Ending soon.':'In flow. The timer will wait.';
+    if(session.lostSince&&Date.now()-session.lostSince>30000){chime('done');endSession()}
+    return}
+  $('clock').textContent=session.plan?fmt(session.plan-el):fmt(el);
+  const sl=(+$('setStruggle').value||0)*60-el;
+  if(sl>0)$('clockSub').textContent='Struggle phase · '+fmt(sl)+'. Normal. Stay with it.';
+  else if(!session.struggleDone){session.struggleDone=true;$('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';syncClip()}
+  const v=session.samples.filter(x=>VALID(x[1]));
+  $('mFocusPct').textContent=v.length?Math.round(100*v.filter(x=>FOCUSED(x[1])).length/v.length)+'%':'–';
+  if(session.plan&&el>=session.plan){
+    if($('setHold').value==='1'&&inDeep()){session.held=true;session.lostSince=0;return}   // don't break flow
+    chime('done');endSession()}
+}
+function sessionSample(d,t){
+  if(session.sound){const ok=VALID(d.currentState);
+    session.mixC+=((ok?Math.max(0,Math.min(1,(d.focusLevel-50)/40)):0)*(d.currentState===4?.3:1)-session.mixC)*.25;
+    sound.mix(session.mixC,d.currentState===4||d.currentState===7?1:0)}
+  session.samples.push([Math.round((t-session.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10)]);
+  const s=d.currentState,dSec=+$('setDistract').value||30,fSec=+$('setFatigue').value||60;
+  session.distractSince=s===4?(session.distractSince||t):0;
+  session.fatigueSince=s===9?(session.fatigueSince||t):0;
+  if(t-session.lastAlert<90000)return;                       // one alert per 90 s at most
+  if(session.distractSince&&t-session.distractSince>=dSec*1000){
+    session.lastAlert=t;session.alerts++;notify('Drifting','You have been distracted for '+dSec+' s. Come back to the one thing.','distract');
+  }else if(!inStruggle()&&session.fatigueSince&&t-session.fatigueSince>=fSec*1000){
+    session.lastAlert=t;notify('Fatigue','Your breathing shows fatigue. Take a 5 minute break.','fatigue');
+  }
+}
+function endSession(){
+  setTimeout(syncClip,50);if(session&&session.sound)sound.stop();
+  clearInterval(session.tick);
+  const s=session;session=null;
+  $('startBtn').textContent='Start session';$('startBtn').classList.remove('stop');
+  $('clockSub').textContent='Pick a length, then start.';$('clock').textContent=durMin?fmt(durMin*60):'0:00';
+  $('marks').hidden=true;
+  const rec={id:s.start,type:'work',start:s.start,end:Date.now(),plan:s.plan,alerts:s.alerts,samples:s.samples,marks:s.marks,note:'',rating:null,
+    overtime:s.plan&&s.held?Math.round((Date.now()-s.start)/1000-s.plan):0};
+  if((rec.end-rec.start)<60000&&!rec.samples.length)return;     // ignore accidental starts
+  rec.stats=stats(rec);
+  const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
+  showView('vJournal');renderJournal(rec.id);
+}
+
+/* ---- alerts ---- */
+let actx=null;
+function chime(kind){
+  if($('setSound').value!=='1')return;
+  try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();
+    const notes=kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
+    notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain(),t0=actx.currentTime+i*.28;
+      o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(.18,t0+.03);g.gain.exponentialRampToValueAtTime(.0001,t0+1.4);
+      o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+1.5)})}catch(e){}
+}
+function addMark(label){const tgt=session||train;if(!tgt)return;const t=Math.round((Date.now()-tgt.start)/1000);
+  tgt.marks.push([t,label,NOW.state,NOW.focus]);
+  if(session){const f=session.marks.filter(m=>m[1]==='focused').length,d=session.marks.filter(m=>m[1]==='drifted').length;
+    $('markCount').textContent=`${f} focused · ${d} drifted marked`;}
+  const b=document.querySelector(`.mk button[data-l=${label}]`);if(b){b.classList.add('flash');setTimeout(()=>b.classList.remove('flash'),500)}}
+$('marks').onclick=e=>{const b=e.target.closest('button');if(b)addMark(b.dataset.l)};
+document.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select'))return;if(e.key==='Escape'&&train)endTraining(false);
+  if(e.key==='f'||e.key==='F')addMark('focused');if(e.key==='d'||e.key==='D')addMark('drifted')});
+function notify(title,body,kind){
+  chime(kind);const a=$('alert');a.innerHTML='<b>'+title+'.</b> '+body+(kind==='distract'?' <button data-a="alert_right">Right</button><button data-a="alert_wrong">Wrong, I was focused</button>':'');
+  a.onclick=e=>{const b=e.target.closest('button');if(b){addMark(b.dataset.a);a.classList.remove('show')}};a.classList.add('show');setTimeout(()=>a.classList.remove('show'),7000);
+  try{if(document.hidden&&Notification.permission==='granted')new Notification('Focaude: '+title,{body})}catch(e){}
+}
+$('notifBtn').onclick=async()=>{try{const p=await Notification.requestPermission();$('notifBtn').textContent=p==='granted'?'Allowed':'Blocked'}catch(e){}};
+
+/* =========================================================
+   STATS + JOURNAL
+   ========================================================= */
+function stats(r){
+  r.samples.sort((a,b)=>a[0]-b[0]);
+  const v=r.samples.filter(x=>VALID(x[1]));
+  const by={};for(const x of v)by[x[1]]=(by[x[1]]||0)+1;
+  const pct=k=>v.length?Math.round(100*(by[k]||0)/v.length):0;
+  let best=0,run=0,prev=null;                       // longest unbroken focus/flow stretch, in seconds
+  for(const x of v){if(FOCUSED(x[1])){run=prev&&FOCUSED(prev[1])?run+(x[0]-prev[0]):0;best=Math.max(best,run)}else run=0;prev=x}
+  const depth=v.length?Math.round(v.reduce((a,x)=>a+x[2],0)/v.length):null;
+  // dominant state per 5-minute block (journal bubbles)
+  const blocks=[];const dur=Math.max(1,Math.round((r.end-r.start)/1000));
+  for(let b=0;b<dur;b+=300){const seg=v.filter(x=>x[0]>=b&&x[0]<b+300);blocks.push(seg.length?mode(seg.map(x=>x[1])):null)}
+  return{depth,focusPct:pct(6)+pct(10),pct:{10:pct(10),6:pct(6),5:pct(5),4:pct(4),7:pct(7),9:pct(9)},longest:best,blocks,worn:v.length,dur};
+}
+function renderJournal(selId){
+  const j=store.get('focaude_journal',[]);
+  if(!j.length){$('list').innerHTML='<div class="empty">No sessions yet.</div>';return}
+  selId=selId||j[0].id;
+  $('list').innerHTML=j.map(r=>{const d=new Date(r.start),st=r.stats;
+    return `<button class="item${r.id===selId?' on':''}" data-id="${r.id}"><div class="t">${d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})} · ${d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
+      <div class="m">${r.type==='training'?'Training · ':r.type==='recovery'?'Recovery · ':''}${fmt(st.dur)} · depth ${st.depth??'–'} · focus ${st.focusPct}%</div>
+      <div class="bubbles">${st.blocks.map(b=>`<i style="--c:${b===null?'var(--line)':colorOf(b)}"></i>`).join('')}</div></button>`}).join('');
+  renderSummary(j.find(r=>r.id===selId));
+}
+$('list').onclick=e=>{const b=e.target.closest('.item');if(b)renderJournal(+b.dataset.id)};
+
+function verdict(st){
+  if(!st.worn)return'No clip data in this session. The timer ran without readings.';
+  if(st.focusPct>=60)return'Deep session. You held focus most of the time.';
+  if(st.focusPct>=35)return'Solid session with some drift. Look at where the line dips.';
+  if(st.pct[4]>=50)return'Mostly distracted. Try a shorter session with one clear task.';
+  if(st.pct[9]>=25)return'Fatigue showed up. Rest or move before the next one.';
+  if(st.pct[5]>=50)return'Calm but not engaged. Good for reading, light for hard work.';
+  return'Mixed session. Check the timeline for the drop points.';
+}
+function renderSummary(r){
+  const st=r.stats,d=new Date(r.start);
+  const order=[[10,'Deep flow'],[6,'Focused'],[5,'Calm'],[4,'Distracted'],[7,'Stressed'],[9,'Fatigued']];
+  $('summary').innerHTML=`<h2>${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</h2>
+    <div style="color:var(--muted)">${d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})} · ${fmt(st.dur)}${r.plan?' of '+fmt(r.plan):' (open-ended)'} · ${r.alerts} alert${r.alerts===1?'':'s'}</div>
+    <p>${r.type==='recovery'?'Recovery: '+REC[r.kind].name+'. '+(st.worn?`Breathing ended at ${(()=>{const b=r.samples.filter(x=>x[5]).slice(-20);return b.length?(b.reduce((a,x)=>a+x[5],0)/b.length/10).toFixed(1)+'/min':'–'})()}.`:''):verdict(st)}</p>
+    ${r.overtime?`<p style="color:var(--flow)">The timer waited ${fmt(r.overtime)} because you were in flow.</p>`:''}
+    ${(()=>{const j=store.get('focaude_journal',[]);const pr=j.find(y=>y.type==='recovery'&&y.end<=r.start&&r.start-y.end<3600e3);return r.type==='work'&&pr?`<p style="color:var(--calm)">Started ${Math.round((r.start-pr.end)/60000)} min after ${REC[pr.kind].name.toLowerCase()} recovery.</p>`:''})()}
+    ${r.type==='work'&&st.dur>=3600&&Date.now()-r.end<3*3600e3?`<div class="card" style="background:var(--panel2);margin:10px 0"><b>Recover before the next one.</b> You worked ${Math.round(st.dur/60)} min. Recovery is the hardest phase of the flow cycle, and it sets up the next one.
+      <div class="row">${Object.keys(REC).map(k=>`<button class="ghost" onclick="startTraining({recovery:'${k}'})">${REC[k].name} · ${REC[k].min} min</button>`).join('')}</div></div>`:''}${r.type==='training'?`<p style="color:var(--gold)">Training: best clearance ${r.maxClear}% · ${r.secAbove80} s above depth 80${r.pacer?` · breathing ${r.pacer.startBr??'–'} → ${r.pacer.endBr??'–'}/min (pacer ended at ${r.pacer.endPace?.toFixed?r.pacer.endPace.toFixed(1):'–'}, followed ${r.pacer.followPct??'–'}%)`:''}</p>`:''}
+    <div class="stats">
+      <div class="stat"><b>${st.depth??'–'}</b><span>Average depth</span></div>
+      <div class="stat"><b>${st.focusPct}%</b><span>Focused or flow</span></div>
+      <div class="stat"><b>${fmt(st.longest)}</b><span>Longest focus run</span></div>
+      <div class="stat"><b>${st.pct[4]}%</b><span>Distracted</span></div>
+    </div>
+    <canvas id="chart" width="1400" height="440"></canvas>
+    <div class="bars">${order.map(([k,n])=>`<div class="bar" style="--c:${colorOf(k)}"><span>${n}</span><div><i style="width:${st.pct[k]}%"></i></div><span>${st.pct[k]}%</span></div>`).join('')}</div>
+    <h3 style="margin:18px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500">How deep was it really?</h3>
+    <div class="rate" id="rate">${[1,2,3,4,5].map(n=>`<button data-n="${n}" class="${r.rating===n?'on':''}">${n}</button>`).join('')}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">1 = scattered, 5 = lost in the work. Your rating trains the personal model.</div>
+    <h3 style="margin:18px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500">Journal note</h3>
+    <textarea id="note" placeholder="What were you working on? What pulled you away?">${(r.note||'').replace(/</g,'&lt;')}</textarea>
+    <div class="row"><button class="ghost" id="delBtn">Delete session</button></div>`;
+  $('note').oninput=e=>{const j=store.get('focaude_journal',[]);const x=j.find(y=>y.id===r.id);if(x){x.note=e.target.value;store.set('focaude_journal',j)}};
+  $('delBtn').onclick=()=>{if(!confirmDel(r))return;store.set('focaude_journal',store.get('focaude_journal',[]).filter(y=>y.id!==r.id));renderJournal()};
+  $('rate').onclick=e=>{const b=e.target.closest('button');if(!b)return;const j=store.get('focaude_journal',[]);const x=j.find(y=>y.id===r.id);
+    if(x){x.rating=+b.dataset.n;store.set('focaude_journal',j);r.rating=x.rating}[...$('rate').children].forEach(c=>c.classList.toggle('on',c===b))};
+  drawChart(r);
+}
+function confirmDel(r){const b=$('delBtn');if(b.dataset.armed)return true;b.dataset.armed=1;b.textContent='Click again to delete';setTimeout(()=>{if(b){delete b.dataset.armed;b.textContent='Delete session'}},3000);return false}
+
+function drawChart(r){
+  const c=$('chart'),x=c.getContext('2d'),W=c.width,H=c.height,pad=30,st=r.stats;
+  x.clearRect(0,0,W,H);
+  const v=r.samples.filter(s=>VALID(s[1]));
+  x.fillStyle=CSS('--muted');x.font='22px Inter';x.fillText('FOCUSED',pad,26);x.fillText('DRIFTING',pad,H-8);
+  if(v.length<2){x.fillText('Not enough clip data to chart.',W/2-150,H/2);return}
+  const dur=st.dur,X=t=>pad+(W-2*pad)*t/dur,Y=f=>62+(H-112)*(1-f/100);
+  // ribbon: 30 s moving average; width grows with depth (deep flow = wide, drifting = thin)
+  const sm=v.map(s=>{const w=v.filter(y=>Math.abs(y[0]-s[0])<=15);return[s[0],w.reduce((a,y)=>a+y[2],0)/w.length,s[1]]});
+  const HW=(f,s)=>(3+38*Math.pow(Math.max(0,f-40)/60,1.4))*(s===10?1.3:s===6?1.1:VALID(s)&&!FOCUSED(s)?.75:1);
+  for(const [k,alpha] of [[1,.16],[.62,.3],[.26,.95]]){
+    for(let i=1;i<sm.length;i++){const [t0,f0,s0]=sm[i-1],[t1,f1,s1]=sm[i];if(t1-t0>30)continue;
+      const x0=X(t0),x1=X(t1),y0=Y(f0),y1=Y(f1),h0=Math.max(1.5,HW(f0,s0)*k),h1=Math.max(1.5,HW(f1,s1)*k);
+      const [a,b,cc]=hex2rgb(colorOf(s1));x.fillStyle=`rgba(${a},${b},${cc},${alpha})`;
+      x.beginPath();x.moveTo(x0,y0-h0);x.lineTo(x1+.6,y1-h1);x.lineTo(x1+.6,y1+h1);x.lineTo(x0,y0+h0);x.closePath();x.fill()}
+  }
+  // your marks: gold tick = focused, grey = drifted, red ring = alert you said was wrong
+  for(const m of (r.marks||[])){const mx=X(m[0]);const col=m[1]==='focused'?CSS('--focus'):m[1]==='alert_wrong'?CSS('--stress'):CSS('--distracted');
+    x.strokeStyle=col;x.lineWidth=3;x.beginPath();x.moveTo(mx,36);x.lineTo(mx,H-30);x.setLineDash([6,8]);x.stroke();x.setLineDash([])}
+  // peak marker
+  const pk=sm.reduce((a,b)=>b[1]>a[1]?b:a);x.fillStyle=CSS('--flow');x.beginPath();x.arc(X(pk[0]),Y(pk[1]),9,0,7);x.fill();
+  x.font='600 20px Inter';x.fillText('PEAK',Math.min(X(pk[0])-24,W-80),Math.max(Y(pk[1])-18,20));
+}
+
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(store.get('focaude_journal',[]))],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='focaude-journal-'+new Date().toISOString().slice(0,10)+'.json';a.click()};
+$('importFile').onchange=async e=>{try{const inc=JSON.parse(await e.target.files[0].text());const j=store.get('focaude_journal',[]);
+  const ids=new Set(j.map(r=>r.id));for(const r of inc)if(!ids.has(r.id))j.push(r);j.sort((a,b)=>b.start-a.start);store.set('focaude_journal',j);renderJournal()}catch(err){alert('Could not read that file.')}};
+
+/* ---- views + settings ---- */
+function showView(id){document.querySelectorAll('section').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===id));
+  if(id==='vJournal')renderJournal()}
+document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b)showView(b.dataset.v)};
+['setDistract','setFatigue','setSound','mac','uid','setStruggle','setRitual','setHold'].forEach(k=>{const el=$(k),v=store.get('focaude_set_'+k,null);if(v!==null)el.value=v;el.onchange=()=>store.set('focaude_set_'+k,el.value)});
+$('logToggle').onclick=()=>{$('rawlog').hidden=!$('rawlog').hidden;$('logToggle').textContent=$('rawlog').hidden?'Show debug log':'Hide debug log'};
+$('copyLog').onclick=()=>navigator.clipboard?.writeText($('rawlog').textContent);
+try{if(Notification.permission==='granted')$('notifBtn').textContent='Allowed'}catch(e){}
+paintLive();
+
+/* =========================================================
+   FOCUS TRAINING — droplets clear and rain turns to fire
+   as focus depth holds above 80
+   ========================================================= */
+let train=null,tMin=4;
+$('tDurs').onclick=e=>{const b=e.target.closest('button');if(!b)return;tMin=+b.dataset.m;[...$('tDurs').children].forEach(x=>x.classList.toggle('on',x===b))};
+$('tStart').onclick=()=>startTraining();
+$('tStop').onclick=()=>endTraining(false);
+
+/* ---- soundscape: synthesized rain and fire, crossfaded ---- */
+const synth=(()=>{
+  let ctx,rainG,fireG,master,timers=[];
+  function noiseBuf(kind){const n=ctx.sampleRate*4,b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);let last=0;
+    for(let i=0;i<n;i++){const w=Math.random()*2-1;if(kind==='brown'){last=(last+.02*w)/1.02;d[i]=last*3.5}else d[i]=w}return b}
+  function loop(buf){const s=ctx.createBufferSource();s.buffer=buf;s.loop=true;s.start();return s}
+  function start(quiet){
+    ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();ctx.resume();
+    master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);
+    master.gain.linearRampToValueAtTime(.9,ctx.currentTime+3);
+    // rain bed: white noise, band-limited
+    rainG=ctx.createGain();rainG.gain.value=quiet?0:.5;rainG.connect(master);
+    const w=loop(noiseBuf('white')),hp=ctx.createBiquadFilter(),lp=ctx.createBiquadFilter();
+    hp.type='highpass';hp.frequency.value=400;lp.type='lowpass';lp.frequency.value=6000;w.connect(hp).connect(lp);
+    const bed=ctx.createGain();bed.gain.value=.22;lp.connect(bed).connect(rainG);
+    // fire bed: brown noise roar
+    fireG=ctx.createGain();fireG.gain.value=0;fireG.connect(master);
+    const br=loop(noiseBuf('brown')),flp=ctx.createBiquadFilter();flp.type='lowpass';flp.frequency.value=320;
+    const roar=ctx.createGain();roar.gain.value=.5;br.connect(flp).connect(roar).connect(fireG);
+    // random drops and crackles
+    const burst=(dest,freq,q,len,vol)=>{const n=Math.floor(ctx.sampleRate*len),b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);
+      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,4);
+      const s=ctx.createBufferSource();s.buffer=b;const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=freq;f.Q.value=q;
+      const g=ctx.createGain();g.gain.value=vol;s.connect(f).connect(g).connect(dest);s.start()};
+    const drops=()=>{if(!rainG)return;for(let i=0;i<3;i++)burst(rainG,1500+Math.random()*4000,1.5,.03,.5*Math.random());timers.push(setTimeout(drops,40+Math.random()*90))};
+    const crack=()=>{if(!fireG)return;burst(fireG,900+Math.random()*2500,.8,.012+Math.random()*.02,1.4*Math.random());
+      if(Math.random()<.15)burst(fireG,200+Math.random()*300,1,.08,.8);timers.push(setTimeout(crack,60+Math.random()*420))};
+    drops();crack();
+  }
+  function mix(c,chaos){if(!ctx||!rainG)return;const t=ctx.currentTime;
+    rainG.gain.setTargetAtTime(Math.pow(1-c,1.3)*(.45+.35*chaos),t,1.2);fireG.gain.setTargetAtTime(Math.min(1,c*1.15)*.75,t,1.2)}
+  function stop(){timers.forEach(clearTimeout);timers=[];if(master){const m=master;m.gain.setTargetAtTime(0,ctx.currentTime,.6);setTimeout(()=>m.disconnect(),2500)}rainG=fireG=null}
+  let pTone=null,pGain=null,lastIn=null;
+  function pace(ph){if(!ctx||!master)return;
+    if(!pTone){pTone=ctx.createOscillator();pTone.type='sine';pGain=ctx.createGain();pGain.gain.value=0;pTone.connect(pGain).connect(master);pTone.start()}
+    const t=ctx.currentTime;pTone.frequency.setTargetAtTime(174+46*ph.level,t,.2);pGain.gain.setTargetAtTime(.035+.03*ph.level,t,.3)}
+  const _stop=stop;
+  function stop2(){if(pTone){try{pTone.stop()}catch(e){}pTone=null}_stop()}
+  return{start,mix,stop:stop2,pace};
+})();
+
+/* ---- sound facade: your own recordings if present in the folder, else synth ----
+   Put rain.mp3 and fire.mp3 (or .wav/.ogg/.m4a) next to this file. */
+const sound=(()=>{
+  const files={rain:null,fire:null};
+  function probe(name){const exts=['mp3','wav','ogg','m4a'];let i=0;
+    const tryNext=()=>{if(i>=exts.length)return;const a=new Audio();a.loop=true;a.preload='auto';a.volume=0;
+      a.oncanplaythrough=()=>{if(!files[name]){files[name]=a;rlog('Soundscape: using '+name+'.'+exts[i-1])}};
+      a.onerror=()=>tryNext();a.src=name+'.'+exts[i++]};
+    tryNext()}
+  probe('rain');probe('fire');
+  let on=false,usingFiles=false,tgt={rain:0,fire:0},timer=null;
+  let pend=null;
+  function start(){if(on)return;on=true;clearTimeout(pend);clearInterval(timer);usingFiles=!!(files.rain&&files.fire);
+    if(usingFiles){for(const k of ['rain','fire']){files[k].volume=0;files[k].currentTime=0;files[k].play().catch(()=>{})}
+      timer=setInterval(()=>{for(const k of ['rain','fire']){const a=files[k];a.volume=Math.max(0,Math.min(1,a.volume+(tgt[k]-a.volume)*.08))}},100)}
+    else{synth.start();synthOn=true}}
+  function mix(c,chaos){if(!on)return;
+    if(usingFiles){tgt.rain=Math.pow(1-c,1.3)*(.45+.4*chaos);tgt.fire=Math.min(1,c*1.15)*.85}else synth.mix(c,chaos)}
+  let synthOn=false;
+  function pace(ph){if(!on)return;if(usingFiles&&!synthOn){synthOn=true;synth.start(true);synth.mix(0,0)}synth.pace(ph)}           // pacer tone always synth (needs to start the synth graph)
+  function stop(){if(!on)return;on=false;
+    if(usingFiles){tgt.rain=tgt.fire=0;pend=setTimeout(()=>{clearInterval(timer);for(const k of ['rain','fire'])files[k].pause()},2500)}
+    if(synthOn)synth.stop();synthOn=false}
+  return{start,mix,pace,stop,get on(){return on}};
+})();
+
+/* ---- scene ---- */
+const scene=(()=>{
+  const c=$('tCanvas'),x=c.getContext('2d');let W,H,raf,drops=[];
+  function size(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio}
+  function seed(){drops=[...Array(170)].map(()=>({x:Math.random()*W,y:Math.random()*H,r:(6+Math.random()**2*38)*devicePixelRatio,
+    k:Math.random(),vy:(.05+Math.random()*.3)*devicePixelRatio,wob:Math.random()*6.28}))}
+  let col=[75,79,87],cl=0;
+  function frame(ts){
+    const t=ts/1000;if(!train){return}
+    cl+=(train.clear-cl)*.03;
+    const tgt=hex2rgb(VALID(NOW.state)?colorOf(NOW.state):CSS('--idle'));for(let i=0;i<3;i++)col[i]+=(tgt[i]-col[i])*.02;
+    x.fillStyle='#07080a';x.fillRect(0,0,W,H);
+    // warm room light grows with clearance
+    const room=x.createRadialGradient(W/2,H*.95,0,W/2,H*.95,H*1.1);
+    room.addColorStop(0,`rgba(232,149,31,${.28*cl})`);room.addColorStop(1,'rgba(232,149,31,0)');x.fillStyle=room;x.fillRect(0,0,W,H);
+    // breathing orb
+    const ph=train.pacer?pacerPhase(ts):null;
+    const R=Math.min(W,H)*.13*(ph?(.78+.42*ph.level):(1+.04*Math.sin(t*2*Math.PI/5.5))),[a,b,d]=col.map(Math.round);
+    if(ph){$('tCue').textContent=ph.inhale?'Breathe in':'Breathe out';sound.pace(ph)}
+    const g=x.createRadialGradient(W/2,H/2,0,W/2,H/2,R*2.6);g.addColorStop(0,`rgba(${a},${b},${d},.95)`);g.addColorStop(.35,`rgba(${a},${b},${d},.45)`);g.addColorStop(1,`rgba(${a},${b},${d},0)`);
+    x.fillStyle=g;x.beginPath();x.arc(W/2,H/2,R*2.6,0,7);x.fill();
+    // droplets: each has a threshold k; it dissolves once clearance passes it
+    for(const p of (train.recovery?[]:drops)){
+      const vis=Math.max(0,Math.min(1,((1-cl)-p.k)*6));if(vis<=0.01)continue;
+      p.y+=p.vy*(1-cl*.8);if(p.y>H+p.r){p.y=-p.r;p.x=Math.random()*W}
+      const r=p.r*(.4+.6*vis),px=p.x+Math.sin(t*.7+p.wob)*2;
+      const dg=x.createRadialGradient(px-r*.3,py(p)-r*.35,r*.05,px,py(p),r);
+      dg.addColorStop(0,`rgba(255,255,255,${.55*vis})`);dg.addColorStop(.45,`rgba(160,175,195,${.16*vis})`);dg.addColorStop(1,`rgba(120,135,155,${.32*vis})`);
+      x.fillStyle=dg;x.beginPath();x.arc(px,py(p),r,0,7);x.fill();
+    }
+    raf=requestAnimationFrame(frame);
+  }
+  const py=p=>p.y;
+  addEventListener('resize',()=>{if(train){size();seed()}});
+  return{start(){size();seed();cl=0;raf=requestAnimationFrame(frame)},stop(){cancelAnimationFrame(raf)}};
+})();
+
+$('recRow').onclick=e=>{const b=e.target.closest('button');if(b)startTraining({recovery:b.dataset.r})};
+const REC={breath:{min:10,name:'Slow breathing',cue:'Long, slow out-breaths. Let the work go.'},walk:{min:15,name:'Walk',cue:'Walk. Eyes on the horizon, not the work.'},nsdr:{min:20,name:'Deep rest',cue:'Lie down. Eyes closed. Nothing to do.'}};
+function startTraining(opt={}){
+  if(session){alert('End your work session first.');return}
+  const rk=opt.recovery||null;
+  showView('vTrain');
+  train={recovery:rk,start:Date.now(),plan:(rk?REC[rk].min:tMin)*60,samples:[],marks:[],clear:0,maxClear:0,above:0,pacer:$('tPacer').value!=='0',adaptive:$('tPacer').value.startsWith('a'),target:parseFloat($('tPacer').value.replace('a',''))||6,
+    pace:null,ph:0,lastTs:0,lastAdapt:Date.now(),follow:0,miss:0,brs:[]};
+  if(train.pacer&&!train.adaptive)train.pace=train.target;
+  train.inF=.4;
+  if(rk){train.pacer=rk==='breath';train.adaptive=true;train.target=4.5;train.pace=null;train.clear=1}
+  $('tCue').textContent=rk?REC[rk].cue:'';
+  $('tClear').hidden=!!rk;
+  $('tSetup').hidden=true;$('tStage').hidden=false;
+  try{document.documentElement.requestFullscreen?.()}catch(e){}
+  if(!rk||rk==='breath'){sound.start();if(rk)sound.mix(1,0)}
+  scene.start();
+  syncClip();
+  train.tick=setInterval(()=>{const el=(Date.now()-train.start)/1000;$('tClock').textContent=fmt(train.plan-el);if(el>=train.plan){chime('done');endTraining(true)}},500);
+  if(!LIVE.connected)$('tState').textContent='clip not connected';
+}
+function trainSample(d,t){
+  train.samples.push([Math.round((t-train.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10)]);
+  if(train.pacer)adaptPacer(d);
+  const ok=VALID(d.currentState);
+  if(train.recovery){}else if(ok&&d.focusLevel>=80){train.clear=Math.min(1,train.clear+1/45);train.above++}   // ~45 s above 80 clears the screen
+  else if(!ok||d.focusLevel<65||d.currentState===4)train.clear=Math.max(0,train.clear-1/90);
+  train.maxClear=Math.max(train.maxClear,train.clear);
+  const chaos=d.currentState===4||d.currentState===7?1:0;
+  if(!train.recovery)sound.mix(train.clear,chaos);else if(train.recovery==='breath')sound.mix(1,0);
+  $('tState').textContent=(LOOK[d.currentState]||LOOK[8])[0]+' · depth '+d.focusLevel;
+  $('tClear').textContent='Clearance '+Math.round(train.clear*100)+'%';
+}
+function endTraining(full){
+  if(!train)return;setTimeout(syncClip,50);clearInterval(train.tick);sound.stop();scene.stop();
+  try{if(document.fullscreenElement)document.exitFullscreen()}catch(e){}
+  const s=train;train=null;$('tStage').hidden=true;$('tSetup').hidden=false;
+  if(!s.samples.length&&!s.recovery)return;
+  if(s.recovery){const rec={id:s.start,type:'recovery',kind:s.recovery,start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:[],note:'',rating:null};
+    rec.stats=stats(rec);const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);showView('vJournal');renderJournal(rec.id);return}
+  const rec={id:s.start,type:'training',start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:s.marks,note:'',rating:null,
+    maxClear:Math.round(s.maxClear*100),secAbove80:s.above,
+    pacer:s.pacer?{adaptive:s.adaptive,target:s.target,endPace:s.pace,startBr:s.brs[0]??null,endBr:s.brs.length?+(s.brs.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,s.brs.length)).toFixed(1):null,followPct:s.follow+s.miss?Math.round(100*s.follow/(s.follow+s.miss)):null}:null};
+  rec.stats=stats(rec);
+  const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
+  showView('vJournal');renderJournal(rec.id);
+}
+
+
+/* =========================================================
+   PHASE 3 — clip settings, battery, history sync, breath pacer
+   ========================================================= */
+// Alert flag bits, from the app's Global/SessionNotificationSettingManager
+const FLAG={distract:16,focus:64|1024,tense:128,fatigue:512,dispro:4096};
+const CLIP=Object.assign({batt:null,mv:null,vib:null,fw:null,clipDef:null,clipSes:null},
+  {alerts:store.get('focaude_alerts',{ses:{distract:1,dispro:1,focus:0,tense:0,fatigue:1},def:{distract:0,focus:0,tense:0,fatigue:0}}),
+   vibLevel:store.get('focaude_vib',60)});
+function clipFlags(){const f=o=>Object.keys(o).reduce((a,k)=>a|(o[k]?FLAG[k]:0),0);
+  let ses=f(CLIP.alerts.ses);if(inStruggle())ses&=~(FLAG.fatigue|FLAG.tense);
+  return{def:f(CLIP.alerts.def),ses}}
+async function syncClip(){
+  if(!LIVE.connected||!LIVE.fec7)return;
+  const uid=parseInt($('uid').value)||1,mode=(session||train)?1:0;
+  try{await send('FNCONFIG mode='+mode+' flags='+JSON.stringify(clipFlags()),buildFrame(CMD_FNCONFIG,fnConfig(mode,0),uid))}catch(e){rlog('ERR '+e.message)}
+}
+async function setVib(level){
+  CLIP.vibLevel=level;store.set('focaude_vib',level);
+  if(!LIVE.connected)return;
+  // MemoBoxDeviceEntity.buildVibrationSettingConfig(): short 0, short 0, byte intensity -> cmd 27510
+  try{await send('VIBRATION '+level,buildFrame(27510,new Uint8Array([0,0,0,0,level]),parseInt($('uid').value)||1))}catch(e){rlog('ERR '+e.message)}
+}
+function onClipFlags(def,ses){CLIP.clipDef=def;CLIP.clipSes=ses;paintClip()}
+
+/* realtime frames can carry device status (0x20), a minute summary (0x40) or a history chunk (0x60) after byte 21 */
+function onClipExtra(p){
+  const kind=p[1]&0xE0;if(p.length<=21)return;
+  const v=new DataView(p.buffer,p.byteOffset+21,p.length-21);
+  if(kind===0x20&&v.byteLength>=54){
+    CLIP.mv=v.getUint16(4,true);CLIP.vib=v.getUint8(9);
+    CLIP.fw=new TextDecoder().decode(new Uint8Array(p.buffer,p.byteOffset+21+10,16)).replace(/\0.*$/,'');
+    CLIP.batt=Math.max(0,Math.min(100,Math.round((CLIP.mv-3500)/(4150-3500)*100)));   // rough Li-ion curve
+    if(v.byteLength>=58){CLIP.clipDef=v.getInt32(50,true);CLIP.clipSes=v.getInt32(54,true)}
+    setConn(LIVE.connected);paintClip();
+  }else if(kind===0x40){
+    let f=v.getInt8(0);if(f<0)f=0;
+    const m=store.get('focaude_minutes',[]);const t=Math.floor(Date.now()/60000)*60;
+    if(!m.length||m[m.length-1][0]!==t){m.push([t,f>100?-1:f]);while(m.length>60*24*14)m.shift();store.set('focaude_minutes',m)}
+  }else if(kind===0x60&&v.byteLength>=36){
+    const ref=v.getUint32(0,true);if(!ref)return;
+    const s=store.get('focaude_streaks',[]),have=new Set(s.map(x=>x[0]+':'+x[1]));let added=0;
+    for(let i=0;i<8;i++){const type=v.getUint8(4+i*4),span=v.getUint8(5+i*4),ago=v.getUint16(6+i*4,true);
+      if(!span||type<4||type>10)continue;
+      const ts=(ref-ref%60)-ago*60;if(have.has(ts+':'+type))continue;
+      s.push([ts,type,span]);have.add(ts+':'+type);added++}
+    if(added){s.sort((a,b)=>a[0]-b[0]);store.set('focaude_streaks',s.slice(-3000));rlog('History: +'+added+' streaks from clip')}
+  }
+}
+async function streakHandshake(){
+  // TrackerDeviceManager.uploadStreakRecordHandshake(): int latest streak ts -> cmd 27539
+  const s=store.get('focaude_streaks',[]),last=s.length?s[s.length-1][0]:0;
+  const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,last,true);
+  await send('HISTORY since '+last,buildFrame(27539,b,parseInt($('uid').value)||1));
+}
+
+/* ---- breath pacer ---- */
+function pacerPhase(ts){
+  // phase accumulator, so the pace can change mid-breath without a jump
+  const bpm=train.pace||8,dt=train.lastTs?(ts-train.lastTs)/1000:0;train.lastTs=ts;
+  train.ph=(train.ph+dt*bpm/60)%1;const x=train.ph,inF=train.inF||.4;                 // 40% inhale, 60% exhale
+  if(x<inF){const k=x/inF;return{inhale:true,level:.5-.5*Math.cos(Math.PI*k)}}
+  const k=(x-inF)/(1-inF);return{inhale:false,level:.5+.5*Math.cos(Math.PI*k)}}
+
+/* Adaptive pacer: start just under your own breathing rate, then step the pace
+   down toward the target only while you are actually following it. */
+function adaptPacer(d){
+  if(d.br!=null)train.brs.push(d.br);
+  const now=Date.now(),el=(now-train.start)/1000;
+  if(!train.adaptive){showPace(d);return}
+  if(train.pace==null){
+    if(d.br!=null)train.pace=Math.max(train.target,Math.min(14,+(d.br*.9).toFixed(1)));
+    else if(el>12)train.pace=Math.max(train.target,8);                      // no breath reading yet: gentle default
+    showPace(d);return}
+  if(now-train.lastAdapt>=30000){                                          // re-evaluate every 30 s (clip rate lags ~30 s)
+    train.lastAdapt=now;
+    const recent=train.brs.slice(-15);
+    if(recent.length>=5){
+      const br=recent.reduce((a,b)=>a+b,0)/recent.length,err=Math.abs(br-train.pace)/train.pace;
+      if(err<.2){train.follow++;                                           // following: slow it down a step
+        const step=train.pace>8?.6:train.pace>6.5?.4:.25;
+        train.pace=Math.max(train.target,+(train.pace-step).toFixed(2))}
+      else{train.miss++;
+        if(br>train.pace*1.35||d.currentState===7)train.pace=Math.min(14,+(train.pace+.5).toFixed(2))}  // too far ahead: back off
+    }
+  }
+  showPace(d);
+}
+function showPace(d){$('tPace').textContent=`You ${d.br??'–'}/min · Pacer ${train.pace?train.pace.toFixed(1):'…'}/min`}
+
+/* ---- settings UI ---- */
+function paintClip(){
+  const fl=n=>n==null?'unknown':(Object.keys(FLAG).filter(k=>n&FLAG[k]&~1024).join(', ')||'none');
+  $('clipInfo').innerHTML=LIVE.connected||CLIP.mv?
+    `Battery ${CLIP.batt??'–'}% (${CLIP.mv??'–'} mV, rough) · firmware ${CLIP.fw||'–'} · strength on clip ${CLIP.vib??'–'}<br>Clip reports alerts. In sessions: ${fl(CLIP.clipSes)}. Always: ${fl(CLIP.clipDef)}.`:'Connect the clip to read its settings.';
+}
+(function buildAlertUI(){
+  const rows=[['distract','Distracted','Buzz when you drift'],['dispro','Distraction loop','Repeated drifting (sessions only)'],['focus','Focus reached','Buzz when you lock in'],['tense','Stress','Buzz when tense'],['fatigue','Fatigue','Buzz when tired']];
+  $('alertGrid').innerHTML='<div></div><div class="ah">In sessions</div><div class="ah">Always</div>'+rows.map(([k,n,d])=>
+    `<div><b>${n}</b><span>${d}</span></div><label class="sw"><input type="checkbox" data-s="ses" data-k="${k}" ${CLIP.alerts.ses[k]?'checked':''}><i></i></label>`+
+    (k==='dispro'?'<div></div>':`<label class="sw"><input type="checkbox" data-s="def" data-k="${k}" ${CLIP.alerts.def[k]?'checked':''}><i></i></label>`)).join('');
+  $('alertGrid').onchange=e=>{const i=e.target;CLIP.alerts[i.dataset.s][i.dataset.k]=i.checked?1:0;store.set('focaude_alerts',CLIP.alerts);syncClip()};
+  $('vibSel').value=String(CLIP.vibLevel);$('vibSel').onchange=e=>setVib(+e.target.value);
+  paintClip();
+})();
+
+/* ---- clip history view ---- */
+$('histBtn').onclick=()=>renderHistory();
+function renderHistory(){
+  document.querySelectorAll('.item').forEach(x=>x.classList.remove('on'));
+  const s=store.get('focaude_streaks',[]),m=store.get('focaude_minutes',[]);
+  const days={};for(const [ts,type,span] of s){const d=new Date(ts*1000).toDateString();(days[d]=days[d]||[]).push([ts,type,span])}
+  const names={10:'Deep flow',6:'Focused',5:'Calm',4:'Distracted',7:'Stressed',9:'Fatigued'};
+  const dayHtml=Object.keys(days).reverse().slice(0,14).map(d=>{const list=days[d];
+    const tot={};for(const x of list)tot[x[1]]=(tot[x[1]]||0)+x[2];
+    return `<div style="margin:14px 0"><b>${d}</b><div class="bubbles" style="margin:8px 0">${list.map(x=>`<i title="${names[x[1]]||x[1]} ${x[2]} min at ${new Date(x[0]*1000).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}" style="--c:${colorOf(x[1])};width:${Math.min(40,8+x[2]*2)}px;border-radius:7px"></i>`).join('')}</div>
+      <div style="font-size:13px;color:var(--muted)">${Object.keys(tot).map(k=>`${names[k]||k}: ${tot[k]} min`).join(' · ')}</div></div>`}).join('');
+  $('summary').innerHTML=`<h2>Clip history</h2><div style="color:var(--muted)">Streaks the clip recorded on its own, synced every 10 s while connected. Wear it without the page open; it fills in next time you connect.</div>
+    ${dayHtml||'<div class="empty">No history from the clip yet. Wear it for a while, then connect.</div>'}
+    <div style="color:var(--muted);font-size:12px;margin-top:10px">${m.length} minute readings stored on this computer.</div>`;
+}
+
+$('wsSound').onchange=e=>{if(!session)return;
+  if(e.target.checked){session.sound=true;session.mixC=0;sound.start();sound.mix(0,0)}
+  else{session.sound=false;sound.stop()}};
+</script></body></html>
