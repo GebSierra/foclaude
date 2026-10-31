@@ -123,6 +123,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 <header>
   <div class="brand">Focaude</div>
   <nav><button data-v="vFocus" class="on">Focus</button><button data-v="vTrain">Training</button><button data-v="vJournal">Journal</button><button data-v="vSettings">Settings</button></nav>
+  <button class="conn" id="fsBtn" title="Full screen" aria-label="Full screen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
   <button class="conn" id="connBtn"><span class="dot"></span><span id="connTxt">Connect clip</span></button>
 </header>
 <div class="warn" id="btwarn" hidden>This browser has no Bluetooth access. Open this file in Chrome or Edge on your PC.</div>
@@ -146,7 +147,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
       <div class="sub" id="clockSub">Pick a length, then start.</div>
       <div class="durs" id="durs"><button data-m="25" class="on">25</button><button data-m="50">50</button><button data-m="90">90</button><button data-m="0">∞</button></div>
       <label class="field" style="border:0;padding:0 0 8px;cursor:pointer"><span style="font-size:13px;color:var(--muted)" id="daLabel">Distraction alerts</span><span class="sw"><input type="checkbox" id="daOn" checked><i></i></span></label>
-      <label class="field" style="border:0;padding:0 0 12px;cursor:pointer"><span style="font-size:13px;color:var(--muted)">Rain-to-fire soundscape</span><span class="sw"><input type="checkbox" id="wsSound"><i></i></span></label>
+      <label class="field" style="border:0;padding:0 0 12px;cursor:pointer"><span style="font-size:13px;color:var(--muted)">Rain-to-fire soundscape</span><span class="sw"><input type="checkbox" id="wsSound" checked><i></i></span></label>
       <button class="big" id="startBtn">Start session</button>
       <div class="marks" id="marks" hidden>
         <div class="sub" style="margin:12px 0 6px">Tell it how you really are</div>
@@ -1179,4 +1180,10 @@ $('coachBtn').onclick=async()=>{
       $('summary').onclick=async ev=>{const a=ev.target.closest('a[data-i]');if(!a)return;ev.preventDefault();$('summary').onclick=null;const c=await gh(f[+a.dataset.i].path);$('summary').innerHTML=md(b64d(c.content))}};
   }catch(e){$('summary').innerHTML='<h2>Coach report</h2><p>Could not load: '+e.message+'</p>'}
 };
+
+/* full screen toggle + remember soundscape choice (on by default) */
+$('fsBtn').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+document.addEventListener('fullscreenchange',()=>{$('fsBtn').title=document.fullscreenElement?'Exit full screen':'Full screen'});
+try{const v=localStorage.getItem('focaude_ws');if(v==='0')$('wsSound').checked=false}catch(e){}
+$('wsSound').addEventListener('change',e=>{try{localStorage.setItem('focaude_ws',e.target.checked?'1':'0')}catch(err){}});
 </script></body></html>
