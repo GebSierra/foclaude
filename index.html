@@ -87,7 +87,8 @@ textarea{width:100%;min-height:80px;background:var(--panel2);border:1px solid va
 .warn{background:#3a2a12;border:1px solid #6b4a1a;color:#f0c98a;border-radius:10px;padding:10px 14px;margin-top:14px;font-size:13px}
 
 /* ---- labels ---- */
-.mk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mk{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.mk button[data-l=tired]:hover,.mk button.flash[data-l=tired]{border-color:var(--fatigue);color:#cfb3ee}
 .mk button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 0;font-size:14px}
 .mk button[data-l=focused]:hover,.mk button.flash[data-l=focused]{border-color:var(--focus);color:var(--focus)}
 .mk button[data-l=drifted]:hover,.mk button.flash[data-l=drifted]{border-color:var(--distracted);color:#c9ccd2}
@@ -148,7 +149,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
       <button class="big" id="startBtn">Start session</button>
       <div class="marks" id="marks" hidden>
         <div class="sub" style="margin:12px 0 6px">Tell it how you really are</div>
-        <div class="mk"><button data-l="focused">Focused <kbd>F</kbd></button><button data-l="drifted">Drifted <kbd>D</kbd></button></div>
+        <div class="mk"><button data-l="focused">Focused <kbd>F</kbd></button><button data-l="drifted">Drifted <kbd>D</kbd></button><button data-l="tired">Tired <kbd>T</kbd></button></div>
         <div class="sub" id="markCount" style="margin:6px 0 0;font-size:12px"></div>
       </div>
     </div>
@@ -592,14 +593,17 @@ function chime(kind){
 function addMark(label){const tgt=session||train;if(!tgt)return;const t=Math.round((Date.now()-tgt.start)/1000);
   tgt.marks.push([t,label,NOW.state,NOW.focus]);
   if(session){const f=session.marks.filter(m=>m[1]==='focused').length,d=session.marks.filter(m=>m[1]==='drifted').length;
-    $('markCount').textContent=`${f} focused · ${d} drifted marked`;}
+    const tr=session.marks.filter(m=>m[1]==='tired'||m[1]==='alert_tired').length;
+    $('markCount').textContent=`${f} focused · ${d} drifted · ${tr} tired marked`;}
   const b=document.querySelector(`.mk button[data-l=${label}]`);if(b){b.classList.add('flash');setTimeout(()=>b.classList.remove('flash'),500)}}
 $('marks').onclick=e=>{const b=e.target.closest('button');if(b)addMark(b.dataset.l)};
 document.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select'))return;if(e.key==='Escape'&&train)endTraining(false);
-  if(e.key==='f'||e.key==='F')addMark('focused');if(e.key==='d'||e.key==='D')addMark('drifted')});
+  if(e.key==='f'||e.key==='F')addMark('focused');if(e.key==='d'||e.key==='D')addMark('drifted');if(e.key==='t'||e.key==='T')addMark('tired')});
 function notify(title,body,kind){
-  chime(kind);const a=$('alert');a.innerHTML='<b>'+title+'.</b> '+body+(kind==='distract'?' <button data-a="alert_right">Right</button><button data-a="alert_wrong">Wrong, I was focused</button>':'');
-  a.onclick=e=>{const b=e.target.closest('button');if(b){addMark(b.dataset.a);a.classList.remove('show')}};a.classList.add('show');setTimeout(()=>a.classList.remove('show'),7000);
+  chime(kind);const a=$('alert');a.innerHTML='<b>'+title+'.</b> '+body+(kind==='distract'?' <button data-a="alert_right">Right, I drifted</button><button data-a="alert_tired">Trying, but tired</button><button data-a="alert_wrong">Wrong, I was focused</button>':'');
+  a.onclick=e=>{const b=e.target.closest('button');if(!b)return;addMark(b.dataset.a);a.classList.remove('show');
+    if(b.dataset.a==='alert_tired'&&session){session.tiredMarks=(session.tiredMarks||0)+1;
+      setTimeout(()=>{a.innerHTML=session.tiredMarks>=2?'<b>Noted.</b> Tired twice now. A 5 minute break will likely buy you more than pushing through.':'<b>Noted.</b> Tired, not distracted. Slow your out-breath for a minute.';a.onclick=null;a.classList.add('show');setTimeout(()=>a.classList.remove('show'),6000)},450)}};a.classList.add('show');setTimeout(()=>a.classList.remove('show'),7000);
   try{if(document.hidden&&Notification.permission==='granted')new Notification('Focaude: '+title,{body})}catch(e){}
 }
 $('notifBtn').onclick=async()=>{try{const p=await Notification.requestPermission();$('notifBtn').textContent=p==='granted'?'Allowed':'Blocked'}catch(e){}};
@@ -690,7 +694,7 @@ function drawChart(r){
       x.beginPath();x.moveTo(x0,y0-h0);x.lineTo(x1+.6,y1-h1);x.lineTo(x1+.6,y1+h1);x.lineTo(x0,y0+h0);x.closePath();x.fill()}
   }
   // your marks: gold tick = focused, grey = drifted, red ring = alert you said was wrong
-  for(const m of (r.marks||[])){const mx=X(m[0]);const col=m[1]==='focused'?CSS('--focus'):m[1]==='alert_wrong'?CSS('--stress'):CSS('--distracted');
+  for(const m of (r.marks||[])){const mx=X(m[0]);const col=m[1]==='focused'?CSS('--focus'):m[1]==='alert_wrong'?CSS('--stress'):(m[1]==='tired'||m[1]==='alert_tired')?CSS('--fatigue'):CSS('--distracted');
     x.strokeStyle=col;x.lineWidth=3;x.beginPath();x.moveTo(mx,36);x.lineTo(mx,H-30);x.setLineDash([6,8]);x.stroke();x.setLineDash([])}
   // peak marker
   const pk=sm.reduce((a,b)=>b[1]>a[1]?b:a);x.fillStyle=CSS('--flow');x.beginPath();x.arc(X(pk[0]),Y(pk[1]),9,0,7);x.fill();
