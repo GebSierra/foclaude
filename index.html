@@ -550,18 +550,23 @@ $('durs').onclick=e=>{const b=e.target.closest('button');if(!b||session)return;
   if(b.dataset.m==='c'){durMin=Math.max(1,Math.min(300,+$('customMin').value||40));$('customMin').focus()}else durMin=+b.dataset.m;[...$('durs').children].forEach(x=>x.classList.toggle('on',x===b));$('clock').textContent=durMin?fmt(durMin*60):'0:00'};
 const fmt=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
 
-$('startBtn').onclick=()=>RITUAL.on?endRitual(true):session?endSession():askClip(()=>($('setRitual').value!=='0'?startRitual():startSession()));
+let _sbLast=0;
+$('startBtn').onclick=()=>{if(Date.now()-_sbLast<600)return;_sbLast=Date.now();RITUAL.on?endRitual(true):session?endSession():askClip(()=>($('setRitual').value!=='0'?startRitual():startSession()))};
 $('customMin').oninput=e=>{if(session)return;durMin=Math.max(1,Math.min(300,+e.target.value||1));$('clock').textContent=fmt(durMin*60);$('durCustom').textContent=durMin+'m';try{localStorage.setItem('focaude_custom',durMin)}catch(err){}};
 try{const c=+localStorage.getItem('focaude_custom');if(c){$('customMin').value=c;$('durCustom').textContent=c+'m'}}catch(e){}
 /* before a session or training: if the clip isn't connected, offer to connect first */
+let ASKING=false;
 function askClip(go){
+  if(ASKING)return;                                  // a start is already in progress: ignore repeat clicks
   if(LIVE.connected||!navigator.bluetooth){go();return}
-  const m=$('ask');m.hidden=false;
+  ASKING=true;const m=$('ask');m.hidden=false;
+  const done=()=>{ASKING=false};
   $('askConnect').onclick=async()=>{m.hidden=true;
-    if(LIVE.device){try{wantConnected=true;await setup(LIVE.device)}catch(e){await connect()}}else await connect();   // the click lets the browser show its device picker
+    try{if(LIVE.device){try{wantConnected=true;await setup(LIVE.device)}catch(e){await connect()}}else await connect()}   // the click lets the browser show its device picker
+    finally{done()}
     go()};
-  $('askSkip').onclick=()=>{m.hidden=true;go()};
-  $('askCancel').onclick=()=>{m.hidden=true};
+  $('askSkip').onclick=()=>{m.hidden=true;done();go()};
+  $('askCancel').onclick=()=>{m.hidden=true;done()};
 }
 /* one-minute pre-flow breath ritual: the orb paces your breathing, then the session starts on its own */
 /* named breath patterns: [cue, seconds, lung level from, to]  (0 = empty, 1 = full) */
@@ -575,24 +580,29 @@ function patternPhase(name,sec){
 const patternRate=name=>+(60/PATTERNS[name].seg.reduce((a,s)=>a+s[1],0)).toFixed(1);
 const RITUAL={on:false,start:0,inF:.5,bpm:5.5,ph:0,last:0,tick:null,pattern:null,t0:0,reset:false};
 function startRitual(){
+  if(RITUAL.on||session)return;                 // never run two rituals or start over a live session
+  clearInterval(RITUAL.tick);
   const v=$('setRitual').value;
   Object.assign(RITUAL,{on:true,start:Date.now(),inF:v==='calm'?.4:.5,ph:0,last:0,pattern:PATTERNS[v]?v:null,t0:0,reset:false});
   $('startBtn').textContent='Skip';$('clockSub').textContent='Settle in. Breathe with the orb. Then work on one thing.';
-  RITUAL.tick=setInterval(()=>{const left=60-(Date.now()-RITUAL.start)/1000;$('clock').textContent=fmt(left);if(left<=0)endRitual(true)},250);
+  const myTick=RITUAL.tick=setInterval(()=>{if(RITUAL.tick!==myTick){clearInterval(myTick);return}
+    const left=60-(Date.now()-RITUAL.start)/1000;$('clock').textContent=fmt(Math.max(0,left));if(left<=0){clearInterval(myTick);endRitual(true)}},250);
 }
 function ritualLevel(ts){
   if(RITUAL.pattern){if(!RITUAL.t0)RITUAL.t0=ts;return patternPhase(RITUAL.pattern,(ts-RITUAL.t0)/1000)}
   const dt=RITUAL.last?(ts-RITUAL.last)/1000:0;RITUAL.last=ts;RITUAL.ph=(RITUAL.ph+dt*RITUAL.bpm/60)%1;
   const x=RITUAL.ph,f=RITUAL.inF;return x<f?{inhale:true,level:.5-.5*Math.cos(Math.PI*x/f)}:{inhale:false,level:.5+.5*Math.cos(Math.PI*(x-f)/(1-f))}}
-function endRitual(go){clearInterval(RITUAL.tick);const wasReset=RITUAL.reset;RITUAL.on=false;RITUAL.reset=false;paintLive();if(wasReset)return;if(go){chime('ritual');startSession()}}
+function endRitual(go){clearInterval(RITUAL.tick);RITUAL.tick=null;if(!RITUAL.on)return;   // already ended: ignore repeat calls
+  const wasReset=RITUAL.reset;RITUAL.on=false;RITUAL.reset=false;paintLive();if(wasReset)return;if(go){chime('ritual');startSession()}}
 /* 30-second sigh reset, offered on distraction and stress alerts; the session keeps running */
 function startReset(){
-  if(RITUAL.on)return;showView('vFocus');
+  if(RITUAL.on)return;clearInterval(RITUAL.tick);showView('vFocus');
   Object.assign(RITUAL,{on:true,start:Date.now(),pattern:'sigh',t0:0,reset:true});
   if(session)addMark('sigh_reset');
   RITUAL.tick=setInterval(()=>{if(Date.now()-RITUAL.start>30000)endRitual(false)},250);
 }
 function startSession(){
+  if(session)return;                            // guard: one session at a time
   session={start:Date.now(),plan:durMin*60,samples:[],marks:[],wins:[],distractSince:0,fatigueSince:0,lastAlert:0,alerts:0};$('marks').hidden=false;$('markCount').textContent='';
   $('startBtn').textContent='End session';$('startBtn').classList.add('stop');
   $('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';
