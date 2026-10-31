@@ -210,6 +210,11 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div id="clipInfo" style="font-size:13px;color:var(--muted);margin-top:10px"></div>
   </div>
   <div class="card" style="margin-top:14px">
+    <h3>Distraction sources (PC)</h3>
+    <div class="field"><span>Record window titles<br><small style="color:var(--muted)">Off records the app name only</small></span><select id="setTitles"><option value="1">On</option><option value="0">Off, app names only</option></select></div>
+    <div id="watchInfo" style="font-size:13px;color:var(--muted);margin-top:10px"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
     <h3>Sync between devices</h3>
     <div class="field"><span>GitHub token<br><small style="color:var(--muted)">Fine-grained, foclaude-data only, Contents read and write</small></span><input id="syncToken" type="password" placeholder="github_pat_…" autocomplete="off"></div>
     <div class="row"><button class="ghost" id="syncNow">Sync now</button><button class="ghost" id="syncForget">Remove token</button></div>
@@ -523,7 +528,7 @@ function ritualLevel(ts){const dt=RITUAL.last?(ts-RITUAL.last)/1000:0;RITUAL.las
   const x=RITUAL.ph,f=RITUAL.inF;return x<f?{inhale:true,level:.5-.5*Math.cos(Math.PI*x/f)}:{inhale:false,level:.5+.5*Math.cos(Math.PI*(x-f)/(1-f))}}
 function endRitual(go){clearInterval(RITUAL.tick);RITUAL.on=false;paintLive();if(go){chime('ritual');startSession()}}
 function startSession(){
-  session={start:Date.now(),plan:durMin*60,samples:[],marks:[],distractSince:0,fatigueSince:0,lastAlert:0,alerts:0};$('marks').hidden=false;$('markCount').textContent='';
+  session={start:Date.now(),plan:durMin*60,samples:[],marks:[],wins:[],distractSince:0,fatigueSince:0,lastAlert:0,alerts:0};$('marks').hidden=false;$('markCount').textContent='';
   $('startBtn').textContent='End session';$('startBtn').classList.add('stop');
   $('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';
   if($('wsSound').checked){session.sound=true;session.mixC=0;sound.start();sound.mix(0,0)}
@@ -535,6 +540,7 @@ const inStruggle=()=>session&&(Date.now()-session.start)/1000<(+$('setStruggle')
 const inDeep=()=>VALID(NOW.state)&&Date.now()-NOW.t<5000&&(FOCUSED(NOW.state)||NOW.focus>=75);
 function tickSession(){
   const el=(Date.now()-session.start)/1000;
+  if(Math.round(el)%2===0)pollWatcher();
   if(session.plan&&el>=session.plan&&session.held){            // overtime while in flow
     $('clock').textContent='+'+fmt(el-session.plan);
     if(inDeep())session.lostSince=0;else session.lostSince=session.lostSince||Date.now();
@@ -574,7 +580,7 @@ function endSession(){
   $('clockSub').textContent='Pick a length, then start.';$('clock').textContent=durMin?fmt(durMin*60):'0:00';
   $('marks').hidden=true;
   const rec={id:s.start,type:'work',start:s.start,end:Date.now(),plan:s.plan,alerts:s.alerts,samples:s.samples,marks:s.marks,note:'',rating:null,
-    overtime:s.plan&&s.held?Math.round((Date.now()-s.start)/1000-s.plan):0};
+    overtime:s.plan&&s.held?Math.round((Date.now()-s.start)/1000-s.plan):0,wins:s.wins};
   if((rec.end-rec.start)<60000&&!rec.samples.length)return;     // ignore accidental starts
   rec.stats=stats(rec);
   const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
@@ -670,6 +676,7 @@ function renderSummary(r){
       <div class="stat"><b>${st.pct[4]}%</b><span>Distracted</span></div>
     </div>
     <canvas id="chart" width="1400" height="440"></canvas>
+    ${r.wins&&r.wins.length?pullReport(r):''}
     <div class="bars">${order.map(([k,n])=>`<div class="bar" style="--c:${colorOf(k)}"><span>${n}</span><div><i style="width:${st.pct[k]}%"></i></div><span>${st.pct[k]}%</span></div>`).join('')}</div>
     <h3 style="margin:18px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500">How deep was it really?</h3>
     <div class="rate" id="rate">${[1,2,3,4,5].map(n=>`<button data-n="${n}" class="${r.rating===n?'on':''}">${n}</button>`).join('')}</div>
@@ -1090,4 +1097,60 @@ if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceW
 try{const v=localStorage.getItem('focaude_da');if(v==='0')$('daOn').checked=false}catch(e){}
 $('daOn').onchange=e=>{try{localStorage.setItem('focaude_da',e.target.checked?'1':'0')}catch(err){}if(e.target.checked){DA.snoozeUntil=0;clearTimeout(DA.timer)}paintDA();syncClip()};
 setInterval(()=>{if(DA.snoozeUntil)paintDA()},1000);
+
+
+/* =========================================================
+   DISTRACTION SOURCES — reads the local watcher (focaude_watch.py)
+   during work sessions: which app/window is in front, idle time.
+   ========================================================= */
+const WATCH={ok:null,last:null,fail:0};
+async function pollWatcher(){
+  if(!session||WATCH.fail>20)return;
+  try{
+    const c=new AbortController();setTimeout(()=>c.abort(),800);
+    const r=await fetch('http://127.0.0.1:47321/now',{cache:'no-store',signal:c.signal});const d=await r.json();
+    WATCH.ok=true;WATCH.fail=0;paintWatch();
+    if(!session)return;
+    const t=Math.round((Date.now()-session.start)/1000);
+    const title=$('setTitles').value==='1'?(d.title||''):'';
+    const away=d.idle>=90?1:0;
+    const prev=session.wins[session.wins.length-1];
+    if(!prev||prev[1]!==d.app||prev[2]!==title||prev[3]!==away)session.wins.push([t,d.app,title,away]);
+  }catch(e){WATCH.fail++;if(WATCH.ok!==false){WATCH.ok=false;paintWatch()}}
+}
+function paintWatch(){const el=$('watchInfo');if(!el)return;
+  el.innerHTML=WATCH.ok?'Watcher connected. Sessions on this PC record which app is in front.':
+    WATCH.ok===false?'Watcher not running. Double-click <b>Start Focaude Watcher.bat</b> in C:\\focaude (PC only).':'Checks for the watcher when a session starts.'}
+const APPN={'chrome.exe':'Chrome','msedge.exe':'Edge','firefox.exe':'Firefox','obsidian.exe':'Obsidian','outlook.exe':'Outlook','olk.exe':'Outlook',
+  'superhuman.exe':'Superhuman','code.exe':'VS Code','winword.exe':'Word','excel.exe':'Excel','logos.exe':'Logos','slack.exe':'Slack','ticktick.exe':'TickTick',
+  'explorer.exe':'File Explorer','claude.exe':'Claude','spotify.exe':'Spotify','whatsapp.exe':'WhatsApp','teams.exe':'Teams','ms-teams.exe':'Teams'};
+function winLabel(app,title){
+  const a=APPN[(app||'').toLowerCase()]||(app||'Unknown').replace(/\.exe$/i,'');
+  if(/^(Chrome|Edge|Firefox)$/.test(a)&&title){const parts=title.replace(/ [-–] (Google Chrome|Microsoft​? Edge|Mozilla Firefox).*$/,'').split(/ [-–|] /);
+    const site=parts.length>1?parts[parts.length-1]:parts[0];return a+': '+site.slice(0,40)}
+  return a}
+function winAt(wins,t){let w=null;for(const x of wins){if(x[0]<=t)w=x;else break}return w}
+/* drift onsets: clip turns to distracted after a valid non-distracted reading, plus your D marks and confirmed alerts */
+function pullReport(r){
+  const v=r.samples.filter(x=>VALID(x[1])),wins=r.wins,on=[];
+  for(let i=1;i<v.length;i++)if(v[i][1]===4&&v[i-1][1]!==4)on.push(v[i][0]);
+  for(const m of (r.marks||[]))if(m[1]==='drifted'||m[1]==='alert_right')on.push(m[0]);
+  const pull={},sw={};
+  for(const t of on){const w=winAt(wins,t);if(!w)continue;const k=w[3]?'Away from keyboard':winLabel(w[1],w[2]);pull[k]=(pull[k]||0)+1;
+    // did you switch window in the 90 s before drifting?
+    const s=wins.filter(x=>x[0]>t-90&&x[0]<=t);if(s.length){const k2=winLabel(s[0][1],s[0][2]);sw[k2]=(sw[k2]||0)+1}}
+  const focusT={},driftT={};
+  for(let i=0;i<v.length;i++){const w=winAt(wins,v[i][0]);if(!w||w[3])continue;const k=winLabel(w[1],w[2]),dt=Math.min(5,(v[i+1]?v[i+1][0]:v[i][0]+1)-v[i][0]);
+    if(FOCUSED(v[i][1]))focusT[k]=(focusT[k]||0)+dt;else if(v[i][1]===4)driftT[k]=(driftT[k]||0)+dt}
+  const top=(o,n=4,f=x=>x)=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k,c])=>`<div class="bar" style="--c:var(--line);grid-template-columns:1fr 60px"><span style="color:var(--text)">${k.replace(/</g,'&lt;')}</span><span>${f(c)}</span></div>`).join('')||'<div style="color:var(--muted);font-size:13px">Nothing yet.</div>';
+  const switches=wins.filter(x=>!x[3]).length-1;
+  return `<h3 style="margin:18px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500">What pulled you out</h3>
+    <div class="bars">${top(pull,4,c=>c+'×')}</div>
+    <div style="font-size:13px;color:var(--muted);margin:8px 0">${on.length} drift${on.length===1?'':'s'} · ${Math.max(0,switches)} window switches this session</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+      <div><div style="font-size:12px;color:var(--focus);margin-bottom:4px">Where focus happened</div><div class="bars">${top(focusT,4,c=>fmt(c))}</div></div>
+      <div><div style="font-size:12px;color:var(--distracted);margin-bottom:4px">Where drift happened</div><div class="bars">${top(driftT,4,c=>fmt(c))}</div></div></div>`;
+}
+paintWatch();
+['setTitles'].forEach(k=>{const el=$(k),v=store.get('focaude_set_'+k,null);if(v!==null)el.value=v;el.onchange=()=>store.set('focaude_set_'+k,el.value)});
 </script></body></html>
