@@ -187,7 +187,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 <section id="vJournal" class="journal" hidden>
   <div>
     <div class="list" id="list"></div>
-    <div class="row"><button class="ghost" id="histBtn">Clip history</button><button class="ghost" id="exportBtn">Export journal</button><label class="ghost">Import<input type="file" id="importFile" accept=".json" hidden></label></div>
+    <div class="row"><button class="ghost" id="coachBtn">Coach report</button><button class="ghost" id="histBtn">Clip history</button><button class="ghost" id="exportBtn">Export journal</button><label class="ghost">Import<input type="file" id="importFile" accept=".json" hidden></label></div>
   </div>
   <div class="card summary" id="summary"><div class="empty">Finish a session and it will show up here.</div></div>
 </section>
@@ -1153,4 +1153,30 @@ function pullReport(r){
 }
 paintWatch();
 ['setTitles'].forEach(k=>{const el=$(k),v=store.get('focaude_set_'+k,null);if(v!==null)el.value=v;el.onchange=()=>store.set('focaude_set_'+k,el.value)});
+
+
+/* =========================================================
+   WEEKLY COACH — reads reports/*.md from foclaude-data
+   ========================================================= */
+function md(s){const esc=x=>x.replace(/&/g,'&amp;').replace(/</g,'&lt;');let out='',list=false;
+  for(let line of s.split('\n')){line=esc(line).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>');
+    if(/^\s*[-*] /.test(line)){if(!list){out+='<ul style="margin:6px 0 10px;padding-left:20px">';list=true}out+='<li style="margin:3px 0">'+line.replace(/^\s*[-*] /,'')+'</li>';continue}
+    if(list){out+='</ul>';list=false}
+    if(/^### /.test(line))out+='<h3 style="margin:16px 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500">'+line.slice(4)+'</h3>';
+    else if(/^## /.test(line))out+='<h3 style="margin:18px 0 6px;font-size:16px;font-weight:500;color:var(--gold)">'+line.slice(3)+'</h3>';
+    else if(/^# /.test(line))out+='<h2>'+line.slice(2)+'</h2>';
+    else if(line.trim())out+='<p style="margin:6px 0">'+line+'</p>'}
+  if(list)out+='</ul>';return out}
+$('coachBtn').onclick=async()=>{
+  document.querySelectorAll('.item').forEach(x=>x.classList.remove('on'));
+  if(!tok()){$('summary').innerHTML='<h2>Coach report</h2><p style="color:var(--muted)">Add your sync token in Settings first. The coach reads your synced journal.</p>';return}
+  $('summary').innerHTML='<h2>Coach report</h2><p style="color:var(--muted)">Loading…</p>';
+  try{const l=(await gh('reports'))||[];const f=l.filter(x=>x.name.endsWith('.md')).sort((a,b)=>b.name.localeCompare(a.name));
+    if(!f.length){$('summary').innerHTML='<h2>Coach report</h2><p style="color:var(--muted)">No report yet. The first one arrives Sunday evening.</p>';return}
+    const cur=await gh(f[0].path);
+    $('summary').innerHTML=`<div style="font-size:12px;color:var(--muted)">${f[0].name.replace('.md','')}${f.length>1?' · <a href="#" id="olderRep" style="color:var(--muted)">'+(f.length-1)+' older</a>':''}</div>`+md(b64d(cur.content));
+    const o=$('olderRep');if(o)o.onclick=async e=>{e.preventDefault();$('summary').innerHTML='<h2>Past reports</h2>'+f.map((x,i)=>`<p><a href="#" data-i="${i}" style="color:var(--gold)">${x.name.replace('.md','')}</a></p>`).join('');
+      $('summary').onclick=async ev=>{const a=ev.target.closest('a[data-i]');if(!a)return;ev.preventDefault();$('summary').onclick=null;const c=await gh(f[+a.dataset.i].path);$('summary').innerHTML=md(b64d(c.content))}};
+  }catch(e){$('summary').innerHTML='<h2>Coach report</h2><p>Could not load: '+e.message+'</p>'}
+};
 </script></body></html>
