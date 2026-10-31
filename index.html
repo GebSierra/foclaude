@@ -68,7 +68,7 @@ section[hidden]{display:none!important}
 .bubbles{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .bubbles i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:inset 0 -2px 3px rgba(0,0,0,.25)}
 .summary h2{margin:0 0 2px;font-weight:300;font-size:26px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:16px 0}
 .stat{background:var(--panel2);border-radius:12px;padding:12px}.stat b{display:block;font-size:24px;font-weight:300}.stat span{font-size:12px;color:var(--muted)}
 #chart{width:100%;height:220px;display:block}
 .bars{display:flex;flex-direction:column;gap:6px;margin-top:8px}
@@ -357,6 +357,7 @@ function decodeRealtime(p){
   const d={currentState:st,stateName:STATES[st]||('state '+st),focusLevel:p[2],focus_depth:p[2],calm:s8(p[3]),signal:p[4],
     signal_quality:new DataView(p.buffer,p.byteOffset).getInt16(13,true),breath:[]};
   const pv=new DataView(p.buffer,p.byteOffset),ar1=pv.getInt16(5,true),ar3=pv.getInt16(9,true);
+  d.wave=s8(p[0]);                                                         // live breath wave (probe 2026-10-31)
   d.br=(d.signal>=100&&ar1>0)?+(ar1/100*60/57.6).toFixed(1):null;        // your breaths per minute now
   d.brBase=ar3>0?+(ar3/100*60/57.6).toFixed(1):null;                       // the clip's baseline for you
   LIVE.last=d;rlog('  '+d.stateName+'  focus='+d.focusLevel+' calm='+d.calm+' signal='+d.signal+' breath='+(d.br??'–')+'/min');
@@ -395,6 +396,8 @@ function render(d){                    // called by the BLE layer for each readi
   const t=Date.now();
   if(NOW.t&&t-NOW.t<300&&d.currentState===NOW.state&&d.focusLevel===NOW.focus)return; // drop duplicate notifications
   Object.assign(NOW,{state:d.currentState,focus:d.focusLevel,calm:d.calm,signal:d.signal,br:d.br,t});
+  if(d.wave!=null)BR.add(t,d.wave);
+  if(BR.rate()!=null&&VALID(d.currentState))d.br=BR.rate();               // live, breath-by-breath rate beats the 58 s average
   recent.push({t,s:d.currentState});while(recent.length&&t-recent[0].t>300000)recent.shift();
   if(session)sessionSample(d,t);
   if(train)trainSample(d,t);
@@ -431,6 +434,7 @@ const orb=(()=>{
     for(let k=0;k<2;k++)for(let j=0;j<3;j++)cur[k][j]+=(tgt[k][j]-cur[k][j])*.02;
     energy+=(tEnergy-energy)*.01;
     let breathe=1+.025*Math.sin(t*2*Math.PI/5.5);
+    if(BR.live())breathe=.97+.07*BR.smooth();
     if(RITUAL.on){const ph=ritualLevel(ts);breathe=.82+.3*ph.level;$('pill').textContent=ph.inhale?'Breathe in':'Breathe out';$('pill').style.color='var(--gold)'}
     const r=R*breathe;
     x.clearRect(0,0,W,W);
@@ -562,7 +566,7 @@ function sessionSample(d,t){
   if(session.sound){const ok=VALID(d.currentState);
     session.mixC+=((ok?Math.max(0,Math.min(1,(d.focusLevel-50)/40)):0)*(d.currentState===4?.3:1)-session.mixC)*.25;
     sound.mix(session.mixC,d.currentState===4||d.currentState===7?1:0)}
-  session.samples.push([Math.round((t-session.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10)]);
+  session.samples.push([Math.round((t-session.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10),d.wave??null]);
   const s=d.currentState,dSec=+$('setDistract').value||30,fSec=+$('setFatigue').value||60;
   session.distractSince=s===4?(session.distractSince||t):0;
   session.fatigueSince=s===9?(session.fatigueSince||t):0;
@@ -637,7 +641,8 @@ function stats(r){
   // dominant state per 5-minute block (journal bubbles)
   const blocks=[];const dur=Math.max(1,Math.round((r.end-r.start)/1000));
   for(let b=0;b<dur;b+=300){const seg=v.filter(x=>x[0]>=b&&x[0]<b+300);blocks.push(seg.length?mode(seg.map(x=>x[1])):null)}
-  return{depth,focusPct:pct(6)+pct(10),pct:{10:pct(10),6:pct(6),5:pct(5),4:pct(4),7:pct(7),9:pct(9)},longest:best,blocks,worn:v.length,dur};
+  const bs=breathStats(r.samples);
+  return{breathSteady:bs.steady,breathRate:bs.rate,breaths:bs.n,depth,focusPct:pct(6)+pct(10),pct:{10:pct(10),6:pct(6),5:pct(5),4:pct(4),7:pct(7),9:pct(9)},longest:best,blocks,worn:v.length,dur};
 }
 function renderJournal(selId){
   const j=store.get('focaude_journal',[]);
@@ -669,12 +674,13 @@ function renderSummary(r){
     ${r.overtime?`<p style="color:var(--flow)">The timer waited ${fmt(r.overtime)} because you were in flow.</p>`:''}
     ${(()=>{const j=store.get('focaude_journal',[]);const pr=j.find(y=>y.type==='recovery'&&y.end<=r.start&&r.start-y.end<3600e3);return r.type==='work'&&pr?`<p style="color:var(--calm)">Started ${Math.round((r.start-pr.end)/60000)} min after ${REC[pr.kind].name.toLowerCase()} recovery.</p>`:''})()}
     ${r.type==='work'&&st.dur>=3600&&Date.now()-r.end<3*3600e3?`<div class="card" style="background:var(--panel2);margin:10px 0"><b>Recover before the next one.</b> You worked ${Math.round(st.dur/60)} min. Recovery is the hardest phase of the flow cycle, and it sets up the next one.
-      <div class="row">${Object.keys(REC).map(k=>`<button class="ghost" onclick="startTraining({recovery:'${k}'})">${REC[k].name} · ${REC[k].min} min</button>`).join('')}</div></div>`:''}${r.type==='training'?`<p style="color:var(--gold)">Training: best clearance ${r.maxClear}% · ${r.secAbove80} s above depth 80${r.pacer?` · breathing ${r.pacer.startBr??'–'} → ${r.pacer.endBr??'–'}/min (pacer ended at ${r.pacer.endPace?.toFixed?r.pacer.endPace.toFixed(1):'–'}, followed ${r.pacer.followPct??'–'}%)`:''}</p>`:''}
+      <div class="row">${Object.keys(REC).map(k=>`<button class="ghost" onclick="startTraining({recovery:'${k}'})">${REC[k].name} · ${REC[k].min} min</button>`).join('')}</div></div>`:''}${r.type==='training'?`<p style="color:var(--gold)">Training: best clearance ${r.maxClear}% · ${r.secAbove80} s above depth 80${r.pacer?` · breathing ${r.pacer.startBr??'–'} → ${r.pacer.endBr??'–'}/min (pacer ended at ${r.pacer.endPace?.toFixed?r.pacer.endPace.toFixed(1):'–'}${r.pacer.sync!=null?', in sync '+r.pacer.sync+'%':''}, followed ${r.pacer.followPct??'–'}%)`:''}</p>`:''}
     <div class="stats">
       <div class="stat"><b>${st.depth??'–'}</b><span>Average depth</span></div>
       <div class="stat"><b>${st.focusPct}%</b><span>Focused or flow</span></div>
       <div class="stat"><b>${fmt(st.longest)}</b><span>Longest focus run</span></div>
       <div class="stat"><b>${st.pct[4]}%</b><span>Distracted</span></div>
+      ${st.breathSteady!=null?`<div class="stat"><b>${st.breathSteady}%</b><span>Breath steadiness</span></div><div class="stat"><b>${st.breathRate}</b><span>Breaths per min</span></div>`:''}
     </div>
     <canvas id="chart" width="1400" height="440"></canvas>
     ${r.wins&&r.wins.length?pullReport(r):''}
@@ -827,7 +833,9 @@ const scene=(()=>{
     room.addColorStop(0,`rgba(232,149,31,${.28*cl})`);room.addColorStop(1,'rgba(232,149,31,0)');x.fillStyle=room;x.fillRect(0,0,W,H);
     // breathing orb
     const ph=train.pacer?pacerPhase(ts):null;
-    const R=Math.min(W,H)*.13*(ph?(.78+.42*ph.level):(1+.04*Math.sin(t*2*Math.PI/5.5))),[a,b,d]=col.map(Math.round);
+    const base=Math.min(W,H)*.13,live=BR.live();
+    const R=base*(live?(.78+.42*BR.smooth()):ph?(.78+.42*ph.level):(1+.04*Math.sin(t*2*Math.PI/5.5))),[a,b,d]=col.map(Math.round);
+    if(ph&&live){const rr=base*(.78+.42*ph.level)*1.55;x.strokeStyle='rgba(233,189,98,.55)';x.lineWidth=2*devicePixelRatio;x.beginPath();x.arc(W/2,H/2,rr,0,7);x.stroke()}
     if(ph){$('tCue').textContent=ph.inhale?'Breathe in':'Breathe out';sound.pace(ph)}
     const g=x.createRadialGradient(W/2,H/2,0,W/2,H/2,R*2.6);g.addColorStop(0,`rgba(${a},${b},${d},.95)`);g.addColorStop(.35,`rgba(${a},${b},${d},.45)`);g.addColorStop(1,`rgba(${a},${b},${d},0)`);
     x.fillStyle=g;x.beginPath();x.arc(W/2,H/2,R*2.6,0,7);x.fill();
@@ -869,7 +877,7 @@ function startTraining(opt={}){
   if(!LIVE.connected)$('tState').textContent='clip not connected';
 }
 function trainSample(d,t){
-  train.samples.push([Math.round((t-train.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10)]);
+  train.samples.push([Math.round((t-train.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10),d.wave??null]);
   if(train.pacer)adaptPacer(d);
   const ok=VALID(d.currentState);
   if(train.recovery){}else if(ok&&d.focusLevel>=80){train.clear=Math.min(1,train.clear+1/45);train.above++}   // ~45 s above 80 clears the screen
@@ -889,7 +897,7 @@ function endTraining(full){
     rec.stats=stats(rec);const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);showView('vJournal');renderJournal(rec.id);return}
   const rec={id:s.start,type:'training',start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:s.marks,note:'',rating:null,
     maxClear:Math.round(s.maxClear*100),secAbove80:s.above,
-    pacer:s.pacer?{adaptive:s.adaptive,target:s.target,endPace:s.pace,startBr:s.brs[0]??null,endBr:s.brs.length?+(s.brs.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,s.brs.length)).toFixed(1):null,followPct:s.follow+s.miss?Math.round(100*s.follow/(s.follow+s.miss)):null}:null};
+    pacer:s.pacer?{sync:s.syncLog&&s.syncLog.length?Math.round(s.syncLog.reduce((a,b)=>a+b,0)/s.syncLog.length):null,adaptive:s.adaptive,target:s.target,endPace:s.pace,startBr:s.brs[0]??null,endBr:s.brs.length?+(s.brs.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,s.brs.length)).toFixed(1):null,followPct:s.follow+s.miss?Math.round(100*s.follow/(s.follow+s.miss)):null}:null};
   rec.stats=stats(rec);
   const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
   showView('vJournal');renderJournal(rec.id);
@@ -954,6 +962,8 @@ async function streakHandshake(){
 
 /* ---- breath pacer ---- */
 function pacerPhase(ts){
+  const _r=pacerPhase2(ts);train.lastPh=_r;return _r}
+function pacerPhase2(ts){
   // phase accumulator, so the pace can change mid-breath without a jump
   const bpm=train.pace||8,dt=train.lastTs?(ts-train.lastTs)/1000:0;train.lastTs=ts;
   train.ph=(train.ph+dt*bpm/60)%1;const x=train.ph,inF=train.inF||.4;                 // 40% inhale, 60% exhale
@@ -964,6 +974,8 @@ function pacerPhase(ts){
    down toward the target only while you are actually following it. */
 function adaptPacer(d){
   if(d.br!=null)train.brs.push(d.br);
+  if(train.pacer&&d.wave!=null&&train.lastPh){(train.sync=train.sync||[]).push([BR.norm(d.wave),train.lastPh.level]);if(train.sync.length>40)train.sync.shift();
+    if(train.sync.length>=12){const c=corr(train.sync.map(s=>s[0]),train.sync.map(s=>s[1]));train.syncPct=Math.max(0,Math.round(c*100));(train.syncLog=train.syncLog||[]).push(train.syncPct)}}
   const now=Date.now(),el=(now-train.start)/1000;
   if(!train.adaptive){showPace(d);return}
   if(train.pace==null){
@@ -984,7 +996,7 @@ function adaptPacer(d){
   }
   showPace(d);
 }
-function showPace(d){$('tPace').textContent=`You ${d.br??'–'}/min · Pacer ${train.pace?train.pace.toFixed(1):'…'}/min`}
+function showPace(d){$('tPace').textContent=`You ${d.br??'–'}/min · Pacer ${train.pace?train.pace.toFixed(1):'…'}/min`+(train.syncPct!=null?` · In sync ${train.syncPct}%`:'')}
 
 /* ---- settings UI ---- */
 function paintClip(){
@@ -1191,4 +1203,40 @@ $('fsBtn').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen()
 document.addEventListener('fullscreenchange',()=>{$('fsBtn').title=document.fullscreenElement?'Exit full screen':'Full screen'});
 try{const v=localStorage.getItem('focaude_ws');if(v==='0')$('wsSound').checked=false}catch(e){}
 $('wsSound').addEventListener('change',e=>{try{localStorage.setItem('focaude_ws',e.target.checked?'1':'0')}catch(err){}});
+
+
+/* =========================================================
+   LIVE BREATH WAVE — byte 0 of every realtime reading swings
+   about −110..+110 with each breath (negative = breathing in).
+   ~1.2 readings/s, under 1 s of delay. Found by the probe.
+   ========================================================= */
+function corr(x,y){const n=x.length,mx=x.reduce((a,b)=>a+b,0)/n,my=y.reduce((a,b)=>a+b,0)/n;let sxy=0,sx=0,sy=0;
+  for(let i=0;i<n;i++){const a=x[i]-mx,b=y[i]-my;sxy+=a*b;sx+=a*a;sy+=b*b}return sx&&sy?sxy/Math.sqrt(sx*sy):0}
+/* split a wave series into breaths: each breath starts where the wave crosses its running middle going down (start of an in-breath) */
+function breathOnsets(pts){            // pts: [[ms or s, wave]...]
+  const on=[];let armed=false;
+  for(let i=1;i<pts.length;i++){
+    const win=pts.slice(Math.max(0,i-12),i+1).map(p=>p[1]),mid=(Math.max(...win)+Math.min(...win))/2,amp=Math.max(...win)-Math.min(...win);
+    if(amp<25)continue;                                   // too flat to be breathing
+    if(pts[i][1]>mid+amp*.2)armed=true;                     // was clearly breathing out
+    if(armed&&pts[i-1][1]>=mid&&pts[i][1]<mid){on.push(pts[i][0]);armed=false}
+  }
+  return on}
+const BR={buf:[],sm:.5,lastT:0,
+  add(t,w){this.buf.push([t,w]);while(this.buf.length&&t-this.buf[0][0]>120000)this.buf.shift();this.lastT=t},
+  live(){return Date.now()-this.lastT<4000&&this.buf.length>=8&&VALID(NOW.state)},
+  norm(w){const r=this.buf.slice(-30).map(p=>p[1]),lo=Math.min(...r),hi=Math.max(...r);return hi-lo<20?.5:Math.max(0,Math.min(1,(hi-w)/(hi-lo)))}, // 1 = full in-breath
+  smooth(){                                              // ease between the ~1 Hz readings so the orb glides
+    const n=this.buf.length;if(n<2)return .5;const [t1,w1]=this.buf[n-1],[t0,w0]=this.buf[n-2],dt=Math.max(300,t1-t0);
+    const k=Math.min(1,(Date.now()-t1)/dt),target=this.norm(w0+(w1-w0)*Math.min(1,.5+k*.5));
+    this.sm+=(target-this.sm)*.08;return this.sm},
+  rate(){const on=breathOnsets(this.buf.slice(-60));if(on.length<4)return null;const per=[];for(let i=1;i<on.length;i++)per.push((on[i]-on[i-1])/1000);
+    const p=per.slice(-4).filter(x=>x>1.8&&x<20);if(p.length<3)return null;return +(60/(p.reduce((a,b)=>a+b,0)/p.length)).toFixed(1)}};
+function breathStats(samples){
+  const pts=samples.filter(s=>s.length>6&&s[6]!=null&&VALID(s[1])).map(s=>[s[0],s[6]]);
+  if(pts.length<30)return{steady:null,rate:null,n:0};
+  const on=breathOnsets(pts),per=[];for(let i=1;i<on.length;i++){const d=on[i]-on[i-1];if(d>1.8&&d<20)per.push(d)}
+  if(per.length<5)return{steady:null,rate:null,n:per.length};
+  const m=per.reduce((a,b)=>a+b,0)/per.length,sd=Math.sqrt(per.reduce((a,b)=>a+(b-m)**2,0)/per.length);
+  return{steady:Math.max(0,Math.round(100-100*sd/m)),rate:+(60/m).toFixed(1),n:per.length}}
 </script></body></html>
