@@ -203,6 +203,12 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div id="clipInfo" style="font-size:13px;color:var(--muted);margin-top:10px"></div>
   </div>
   <div class="card" style="margin-top:14px">
+    <h3>Sync between devices</h3>
+    <div class="field"><span>GitHub token<br><small style="color:var(--muted)">Fine-grained, foclaude-data only, Contents read and write</small></span><input id="syncToken" type="password" placeholder="github_pat_…" autocomplete="off"></div>
+    <div class="row"><button class="ghost" id="syncNow">Sync now</button><button class="ghost" id="syncForget">Remove token</button></div>
+    <div id="syncInfo" style="font-size:13px;color:var(--muted);margin-top:10px"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
     <h3>Clip</h3>
     <div class="field"><span>Clip address</span><input id="mac" value="A4:11:63:E0:A7:A1"></div>
     <div class="field"><span>Owner ID</span><input id="uid" value="1"></div>
@@ -353,7 +359,7 @@ const hx=b=>[...b].map(x=>x.toString(16).padStart(2,'0')).join(' ');
 function rlog(...m){const el=$('rawlog');el.textContent+=new Date().toLocaleTimeString()+'  '+m.join(' ')+'\n';
   if(el.textContent.length>200000)el.textContent=el.textContent.slice(-150000);el.scrollTop=el.scrollHeight}
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}if((k==='focaude_journal'||k==='focaude_streaks')&&typeof scheduleSync==='function')scheduleSync()}};
 
 /* ---- state model ---- */
 const CSS=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -987,4 +993,76 @@ function renderHistory(){
 $('wsSound').onchange=e=>{if(!session)return;
   if(e.target.checked){session.sound=true;session.mixC=0;sound.start();sound.mix(0,0)}
   else{session.sound=false;sound.stop()}};
+
+
+/* =========================================================
+   SYNC — journal + clip history in the private GitHub repo
+   GebSierra/foclaude-data. One file per session (sessions/<id>.json)
+   so files stay small; merges by session id, deletions propagate.
+   ========================================================= */
+const SYNC={repo:'GebSierra/foclaude-data',busy:false,timer:null,last:null,err:null};
+const tok=()=>{try{return localStorage.getItem('focaude_token')||''}catch(e){return''}};
+const b64e=s=>{const b=new TextEncoder().encode(s);let o='';for(let i=0;i<b.length;i+=0x8000)o+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(o)};
+const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+const hsh=s=>{let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h.toString(36)};
+async function gh(path,opt={}){
+  const r=await fetch('https://api.github.com/repos/'+SYNC.repo+'/contents/'+path,{...opt,headers:{Authorization:'Bearer '+tok(),Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})}});
+  if(r.status===404)return null;
+  if(!r.ok)throw new Error('GitHub '+r.status+(r.status===401?' (token rejected)':r.status===403?' (token lacks access)':''));
+  return r.json();
+}
+function scheduleSync(){if(!tok())return;clearTimeout(SYNC.timer);SYNC.timer=setTimeout(syncAll,3000)}
+async function syncAll(){
+  if(!tok()||SYNC.busy||!navigator.onLine)return;SYNC.busy=true;paintSync('Syncing…');
+  try{
+    const known=store.get('focaude_synced',{});            // id -> {sha,h} as of last sync
+    const list=(await gh('sessions'))||[];
+    const remote={};for(const f of list)if(f.name.endsWith('.json'))remote[f.name.slice(0,-5)]={sha:f.sha,path:f.path};
+    let j=store.get('focaude_journal',[]);const local={};for(const r of j)local[String(r.id)]=r;
+    let pulled=0,pushed=0,removed=0;
+    // remote side
+    for(const id of Object.keys(remote)){
+      const k=known[id],l=local[id];
+      if(!l&&k){await gh(remote[id].path,{method:'DELETE',body:JSON.stringify({message:'delete '+id,sha:remote[id].sha})});delete known[id];removed++;continue} // deleted here
+      if(!k||k.sha!==remote[id].sha){                       // new or changed elsewhere
+        if(l&&k&&hsh(JSON.stringify(l))!==k.h&&(l.mt||0)>0){} // both changed: keep the newer below
+        const f=await gh(remote[id].path);const rr=JSON.parse(b64d(f.content));
+        if(!l||(rr.mt||0)>=(l.mt||0)){local[id]=rr;pulled++}
+        known[id]={sha:remote[id].sha,h:hsh(JSON.stringify(local[id]))};
+      }
+    }
+    // gone remotely but we had synced it: deleted on the other device
+    for(const id of Object.keys(known))if(!remote[id]&&local[id]&&known[id].sha){delete local[id];delete known[id];removed++}
+    // local side: new or edited here
+    for(const id of Object.keys(local)){
+      const r=local[id],h=hsh(JSON.stringify(r));
+      if(known[id]&&known[id].h===h)continue;
+      r.mt=Date.now();const body=JSON.stringify(r);
+      const res=await gh('sessions/'+id+'.json',{method:'PUT',body:JSON.stringify({message:'session '+id,content:b64e(body),...(remote[id]?{sha:(known[id]&&known[id].sha)||remote[id].sha}:{})})});
+      known[id]={sha:res.content.sha,h:hsh(JSON.stringify(r))};pushed++;
+    }
+    j=Object.values(local).sort((a,b)=>b.start-a.start);
+    try{localStorage.setItem('focaude_journal',JSON.stringify(j))}catch(e){}
+    store.set('focaude_synced',known);
+    // clip history: one small file, union merge
+    const sf=await gh('streaks.json');let rs=sf?JSON.parse(b64d(sf.content)):[];
+    const ls=store.get('focaude_streaks',[]),seen=new Set(),all=[];
+    for(const x of [...rs,...ls]){const k=x[0]+':'+x[1];if(!seen.has(k)){seen.add(k);all.push(x)}}
+    all.sort((a,b)=>a[0]-b[0]);
+    if(all.length!==rs.length)await gh('streaks.json',{method:'PUT',body:JSON.stringify({message:'clip history',content:b64e(JSON.stringify(all)),...(sf?{sha:sf.sha}:{})})});
+    try{localStorage.setItem('focaude_streaks',JSON.stringify(all))}catch(e){}
+    SYNC.last=Date.now();SYNC.err=null;
+    paintSync(`Synced ${new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}. ${pulled} in, ${pushed} out${removed?', '+removed+' removed':''}. ${j.length} sessions total.`);
+    if(pulled||removed){if(!$('vJournal').hidden)renderJournal()}
+  }catch(e){SYNC.err=e.message;paintSync('Sync failed: '+e.message)}
+  finally{SYNC.busy=false}
+}
+function paintSync(msg){$('syncInfo').textContent=msg||(tok()?(SYNC.last?'Last sync '+new Date(SYNC.last).toLocaleTimeString():'Token saved. Waiting to sync.'):'No token yet. Journal stays on this device only.')}
+$('syncToken').value=tok()?'••••••••':'';
+$('syncToken').onchange=e=>{const v=e.target.value.trim();if(!v||v.startsWith('•'))return;try{localStorage.setItem('focaude_token',v)}catch(err){}e.target.value='••••••••';syncAll()};
+$('syncNow').onclick=()=>syncAll();
+$('syncForget').onclick=()=>{try{localStorage.removeItem('focaude_token')}catch(e){}$('syncToken').value='';paintSync()};
+addEventListener('online',()=>syncAll());
+setInterval(()=>syncAll(),5*60000);
+paintSync();setTimeout(syncAll,2000);
 </script></body></html>
