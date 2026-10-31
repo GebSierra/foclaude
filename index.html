@@ -436,6 +436,7 @@ const mode=a=>{const c={};let m=a[0];for(const x of a){c[x]=(c[x]||0)+1;if(c[x]>
 const orb=(()=>{
   const c=$('orb'),x=c.getContext('2d'),W=c.width,R=W*0.36,cx=W/2,cy=W/2;
   let cur=[[75,79,87],[75,79,87]],tgt=cur.map(a=>a.slice()),energy=.3,tEnergy=.3;
+  const STRANDS=[...Array(46)].map((_,i)=>({a:i/46*Math.PI*2+Math.random()*.3,tw:2.2+Math.random()*1.4,dir:i%7===0?-1:1,k:i%3===0?1:0,w:.8+Math.random()*1.6,o:.18+Math.random()*.32,p:Math.random()*6.28}));
   const blobs=[...Array(7)].map((_,i)=>({a:Math.random()*6.28,b:Math.random()*6.28,sa:.15+Math.random()*.25,sb:.12+Math.random()*.2,r:.45+Math.random()*.35,k:i%2}));
   function target(s,focus){const l=LOOK[s]||LOOK[8];tgt=[hex2rgb(CSS(l[1])),hex2rgb(CSS(l[2]))];
     tEnergy=!VALID(s)?.25:s===4?.9:s===7?1.2:s===9?.35:s===10?.45:s===6?.55:.4;}
@@ -465,12 +466,29 @@ const orb=(()=>{
       bg.addColorStop(0,`rgba(${col},.75)`);bg.addColorStop(1,`rgba(${col},0)`);
       x.fillStyle=bg;x.beginPath();x.arc(px,py,rr,0,7);x.fill();
     }
-    // swirl lines, more chaotic when distracted/stressed
-    x.filter='blur(1.5px)';x.lineWidth=2.2;
-    for(let i=0;i<5;i++){const col=cur[i%2].map(Math.round);x.strokeStyle=`rgba(${col},.35)`;x.beginPath();
-      for(let a=0;a<=6.3;a+=.12){const w=Math.sin(a*3+t*.6*(1+energy)+i)*r*.12*energy+Math.sin(a*5-t*.4+i*2)*r*.05;
-        const rad=r*(.35+i*.11)+w,xx=cx+Math.cos(a+t*.08*(i%2?1:-1))*rad,yy=cy+Math.sin(a+t*.08*(i%2?1:-1))*rad;a?x.lineTo(xx,yy):x.moveTo(xx,yy)}
-      x.closePath();x.stroke()}
+    // light strands: thin filaments spiralling from the core outward, like a vortex of light.
+    // Focused or flow = one smooth, ordered spiral. Distracted or stressed = strands break up and cross.
+    x.filter='none';x.lineCap='round';
+    const chaos=Math.max(0,Math.min(1,(energy-.35)/.7));            // 0 calm order .. 1 tangled
+    const spin=t*(.10+.25*energy);
+    for(let i=0;i<STRANDS.length;i++){
+      const s=STRANDS[i],col=cur[s.k].map(Math.round);
+      const a0=s.a+spin*s.dir*(1+chaos*.6*Math.sin(i));
+      x.lineWidth=s.w*(W/920);
+      let px=null,py=null;
+      for(let j=0;j<=26;j++){
+        const u=j/26;                                                    // 0 at core, 1 at rim
+        const wob=chaos*(Math.sin(u*9+t*1.7+s.p)*.55+Math.sin(u*17-t*2.3+s.p*2)*.25);
+        const th=a0+u*s.tw+wob;
+        const rad=r*(.06+.9*Math.pow(u,.85))*(1+chaos*.08*Math.sin(t*3+s.p+u*6));
+        const qx=cx+Math.cos(th)*rad,qy=cy+Math.sin(th)*rad;
+        if(px!==null){const fade=Math.sin(Math.PI*u);                 // bright mid-strand, soft at both ends
+          x.strokeStyle=`rgba(${col},${(s.o*fade*(1-.35*chaos)).toFixed(3)})`;x.beginPath();x.moveTo(px,py);x.lineTo(qx,qy);x.stroke()}
+        px=qx;py=qy}
+    }
+    // soft core glow
+    const core=x.createRadialGradient(cx,cy,0,cx,cy,r*.35);core.addColorStop(0,`rgba(${cur[0].map(Math.round)},.45)`);core.addColorStop(1,`rgba(${cur[0].map(Math.round)},0)`);
+    x.fillStyle=core;x.beginPath();x.arc(cx,cy,r*.35,0,7);x.fill();
     x.restore();x.filter='none';x.globalCompositeOperation='source-over';
     // glass rim + highlight
     const rim=x.createRadialGradient(cx,cy,r*.82,cx,cy,r);rim.addColorStop(0,'rgba(255,255,255,0)');rim.addColorStop(1,'rgba(255,255,255,.22)');
