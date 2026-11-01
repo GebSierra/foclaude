@@ -120,6 +120,14 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 .askcard{max-width:380px;width:100%}
 .resumeShow{margin:-4px 0 12px;padding:9px 12px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;font-size:13px;color:var(--text);background:var(--panel2)}
 .resumeShow b{color:var(--gold);font-weight:500}.resumeShow span{color:var(--muted)}
+.stepsBox{margin:-4px 0 12px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:13px}
+.stepsBox label{display:flex;gap:8px;align-items:flex-start;padding:3px 0;cursor:pointer}.stepsBox label.done span{color:var(--muted);text-decoration:line-through}
+.stepsBox input[type=checkbox]{margin-top:3px;accent-color:var(--gold)}
+.pfwarn{font-size:12px;color:var(--gold);margin:-6px 0 10px}
+.pfchk{display:flex;gap:8px;align-items:center;font-size:13px;margin:0 0 8px;cursor:pointer}.pfchk input{accent-color:var(--gold)}
+.glow{text-align:center}.glow .big2{font-size:42px;font-weight:300;margin:8px 0;color:var(--gold)}
+.refl{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0}.refl h4{margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.refl div{font-size:14px;margin:4px 0}.refl b{color:var(--gold);font-weight:500}
 .rsin{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:9px 10px;font:inherit;margin:0 0 12px}
 .comp{margin-top:28px}
 .hours{display:flex;align-items:flex-end;gap:4px;height:150px;margin:10px 0 4px}
@@ -164,6 +172,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
       <div class="clock" id="clock">25:00</div>
       <div class="sub" id="clockSub">Pick a length, then start.</div>
       <div class="resumeShow" id="resumeShow" hidden></div>
+      <div class="stepsBox" id="stepsBox" hidden></div>
       <div class="durs" id="durs"><button data-m="25" class="on">25</button><button data-m="50">50</button><button data-m="90">90</button><button data-m="0">∞</button><button data-m="c" id="durCustom">Custom</button></div>
       <div class="row" id="customRow" hidden style="margin:-4px 0 12px;align-items:center"><input id="customMin" type="number" min="1" max="300" value="40" style="width:90px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit"><span style="color:var(--muted);font-size:13px">minutes</span></div>
       <label class="field" style="border:0;padding:0 0 8px;cursor:pointer"><span style="font-size:13px;color:var(--muted)" id="daLabel">Distraction alerts</span><span class="sw"><input type="checkbox" id="daOn" checked><i></i></span></label>
@@ -271,6 +280,24 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
   <p style="margin:0 0 14px">Connect your FOCI clip so this session records your focus?</p>
   <div class="row"><button class="big" id="askConnect" style="flex:1">Connect clip</button></div>
   <div class="row"><button class="ghost" id="askSkip" style="flex:1">Start without clip</button><button class="ghost" id="askCancel">Cancel</button></div>
+</div></div>
+<div class="askwrap" id="pf" hidden><div class="card askcard">
+  <h3>Before you start</h3>
+  <label style="font-size:12px;color:var(--muted)">Next steps, one per line (small enough to start in 5 seconds)</label>
+  <textarea class="rsin" id="pfSteps" rows="4" style="min-height:90px" placeholder="Open the passage and read it twice&#10;List three observations from verse 12&#10;Draft the main point in one sentence"></textarea>
+  <label style="font-size:12px;color:var(--muted)">Minutes until your next commitment</label>
+  <input class="rsin" id="pfRunway" type="number" min="0" max="600" placeholder="e.g. 120">
+  <div class="pfwarn" id="pfWarn" hidden></div>
+  <label class="pfchk"><input type="checkbox" id="pfPhone"> Phone is in another room</label>
+  <label class="pfchk"><input type="checkbox" id="pfTabs"> Other tabs and apps closed</label>
+  <div class="row" style="margin-top:12px"><button class="big" id="pfGo" style="flex:1">Start deep work</button></div>
+  <div class="row"><button class="ghost" id="pfSkip" style="flex:1">Skip, short session</button><button class="ghost" id="pfCancel">Cancel</button></div>
+</div></div>
+<div class="askwrap" id="glow" hidden><div class="card askcard glow">
+  <h3>Notice the afterglow</h3>
+  <p style="color:var(--muted);font-size:14px;margin:0">Before you move on, notice how finishing feels. Let it register. This is the reward that makes the next session easier to start.</p>
+  <div class="big2" id="glowT">20</div>
+  <button class="ghost" id="glowSkip">Done</button>
 </div></div>
 <div class="askwrap" id="resume" hidden><div class="card askcard">
   <h3>Ready to resume</h3>
@@ -593,7 +620,7 @@ $('durs').onclick=e=>{const b=e.target.closest('button');if(!b||session)return;
 const fmt=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
 
 let _sbLast=0;
-$('startBtn').onclick=()=>{if(Date.now()-_sbLast<600)return;_sbLast=Date.now();RITUAL.on?endRitual(true):session?endSession():askClip(()=>($('setRitual').value!=='0'?startRitual():startSession()))};
+$('startBtn').onclick=()=>{if(Date.now()-_sbLast<600)return;_sbLast=Date.now();RITUAL.on?endRitual(true):session?endSession():askClip(()=>preflight())};
 $('customMin').oninput=e=>{if(session)return;durMin=Math.max(1,Math.min(300,+e.target.value||1));$('clock').textContent=fmt(durMin*60);$('durCustom').textContent=durMin+'m';try{localStorage.setItem('focaude_custom',durMin)}catch(err){}};
 try{const c=+localStorage.getItem('focaude_custom');if(c){$('customMin').value=c;$('durCustom').textContent=c+'m'}}catch(e){}
 /* before a session or training: if the clip isn't connected, offer to connect first */
@@ -645,7 +672,7 @@ function startReset(){
 }
 function startSession(){
   if(session)return;                            // guard: one session at a time
-  session={start:Date.now(),plan:durMin*60,samples:[],marks:[],wins:[],distractSince:0,fatigueSince:0,lastAlert:0,alerts:0};$('marks').hidden=false;$('markCount').textContent='';
+  session={start:Date.now(),plan:durMin*60,samples:[],marks:[],wins:[],distractSince:0,fatigueSince:0,lastAlert:0,alerts:0,deep:!!PF.deep,steps:PF.steps||[],runway:PF.runway??null};PF.deep=false;PF.steps=[];PF.runway=null;paintSteps();$('marks').hidden=false;$('markCount').textContent='';
   $('startBtn').textContent='End session';$('startBtn').classList.add('stop');
   $('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';
   if($('wsSound').checked){session.sound=true;session.mixC=0;sound.start();sound.mix(0,0)}
@@ -703,12 +730,14 @@ function endSession(){
   $('clockSub').textContent='Pick a length, then start.';$('clock').textContent=durMin?fmt(durMin*60):'0:00';
   $('marks').hidden=true;
   const rec={id:s.start,type:'work',start:s.start,end:Date.now(),plan:s.plan,alerts:s.alerts,samples:s.samples,marks:s.marks,note:'',rating:null,
-    overtime:s.plan&&s.held?Math.round((Date.now()-s.start)/1000-s.plan):0,wins:s.wins};
+    overtime:s.plan&&s.held?Math.round((Date.now()-s.start)/1000-s.plan):0,wins:s.wins,deep:s.deep,steps:s.steps,runway:s.runway};
+  $('stepsBox').hidden=true;
   if((rec.end-rec.start)<60000&&!rec.samples.length)return;     // ignore accidental starts
   rec.stats=stats(rec);if(s.resume)rec.resume=s.resume;
   const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
-  showView('vJournal');renderJournal(rec.id);
-  openResume(rec.resume,n=>{const j=store.get('focaude_journal',[]);const x=j.find(y=>y.id===rec.id);if(x){x.resume=n;store.set('focaude_journal',j)}renderJournal(rec.id);paintResume()});
+  const reached=ttfOf(rec)!=null;
+  afterglow(s.deep&&(reached||rec.stats.dur>=600),()=>{showView('vJournal');renderJournal(rec.id);
+  openResume(rec.resume,n=>{const j=store.get('focaude_journal',[]);const x=j.find(y=>y.id===rec.id);if(x){x.resume=n;store.set('focaude_journal',j)}renderJournal(rec.id);paintResume()})});
 }
 /* ready-to-resume note (Leroy 2018): one line on where you stopped and the next step */
 function lastResume(){const r=store.get('focaude_journal',[]).find(x=>x.resume&&(x.resume.next||x.resume.where));return r?r.resume:null}
@@ -731,9 +760,9 @@ $('resumeBtn').onclick=midResume;
 /* ---- alerts ---- */
 let actx=null;
 function chime(kind){
-  if((kind==='ritual'||kind==='done'||kind==='flow')?$('setChimes').value!=='1':$('setSound').value!=='1')return;
+  if((kind==='ritual'||kind==='done'||kind==='flow'||kind==='cue')?$('setChimes').value!=='1':$('setSound').value!=='1')return;
   try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();
-    const notes=kind==='globe'?[523,392]:kind==='flow'?[523,659]:kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
+    const notes=kind==='cue'?[294,440,587]:kind==='globe'?[523,392]:kind==='flow'?[523,659]:kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
     notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain(),t0=actx.currentTime+i*.28;
       o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(V(.09),t0+.06);g.gain.exponentialRampToValueAtTime(.0001,t0+1.6);
       o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+1.5)})}catch(e){}
@@ -809,6 +838,7 @@ function renderSummary(r){
   $('summary').innerHTML=`<h2>${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</h2>
     <div style="color:var(--muted)">${d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})} · ${fmt(st.dur)}${r.plan?' of '+fmt(r.plan):' (open-ended)'} · ${r.alerts} alert${r.alerts===1?'':'s'}</div>
     <p>${r.type==='recovery'?'Recovery: '+REC[r.kind].name+'. '+(st.worn?`Breathing ended at ${(()=>{const b=r.samples.filter(x=>x[5]).slice(-20);return b.length?(b.reduce((a,x)=>a+x[5],0)/b.length/10).toFixed(1)+'/min':'–'})()}.`:''):verdict(st)}</p>
+    ${r.type==='work'?reflection(r):''}
     ${r.overtime?`<p style="color:var(--flow)">The timer waited ${fmt(r.overtime)} because you were in flow.</p>`:''}
     ${(()=>{const j=store.get('focaude_journal',[]);const pr=j.find(y=>y.type==='recovery'&&y.end<=r.start&&r.start-y.end<3600e3);return r.type==='work'&&pr?`<p style="color:var(--calm)">Started ${Math.round((r.start-pr.end)/60000)} min after ${REC[pr.kind].name.toLowerCase()} recovery.</p>`:''})()}
     ${r.type==='work'&&st.dur>=3600&&Date.now()-r.end<3*3600e3?`<div class="card" style="background:var(--panel2);margin:10px 0"><b>Recover before the next one.</b> You worked ${Math.round(st.dur/60)} min. Recovery is the hardest phase of the flow cycle, and it sets up the next one.
@@ -1604,4 +1634,69 @@ function setVolume(v){VOL=Math.max(0,Math.min(1,v));try{localStorage.setItem('fo
   try{synth.setVol()}catch(e){}}
 document.querySelectorAll('.volSlider').forEach(s=>{s.value=Math.round(VOL*100);s.oninput=e=>setVolume(e.target.value/100)});setVolume(VOL);
 try{paintResume()}catch(e){}
+
+/* =========================================================
+   FLOW ON COMMAND (Doris and Kotler): pre-flight, flow cue, time to flow,
+   flow window, flow fitness, afterglow
+   ========================================================= */
+const PF={deep:false,steps:[],runway:null};
+function preflight(){
+  const m=$('pf');m.hidden=false;
+  const r=lastResume();$('pfSteps').value=r&&r.next?r.next:'';$('pfRunway').value='';$('pfWarn').hidden=true;
+  $('pfPhone').checked=false;$('pfTabs').checked=false;setTimeout(()=>$('pfSteps').focus(),50);
+  $('pfRunway').oninput=()=>{const v=+$('pfRunway').value;const w=$('pfWarn');
+    if(v>0&&v<90){w.hidden=false;w.textContent='Under 90 minutes. Your brain may not commit to the struggle if it knows an interruption is coming. Can you move something?'}else w.hidden=true};
+  $('pfGo').onclick=()=>{m.hidden=true;
+    PF.deep=true;PF.steps=$('pfSteps').value.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,10).map(t=>({t,done:0}));
+    PF.runway=$('pfRunway').value===''?null:+$('pfRunway').value;
+    chime('cue');                                   // same signature cue every deep session: the trigger you condition
+    setTimeout(()=>{$('setRitual').value!=='0'?startRitual():startSession()},1400)};
+  $('pfSkip').onclick=()=>{m.hidden=true;PF.deep=false;PF.steps=[];PF.runway=null;startSession()};
+  $('pfCancel').onclick=()=>{m.hidden=true};
+}
+function paintSteps(){const el=$('stepsBox');const st=session&&session.steps;
+  if(!st||!st.length){el.hidden=true;return}el.hidden=false;
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  el.innerHTML=st.map((x,i)=>`<label class="${x.done?'done':''}"><input type="checkbox" data-i="${i}" ${x.done?'checked':''}><span>${esc(x.t)}</span></label>`).join('');
+  el.querySelectorAll('input').forEach(c=>c.onchange=()=>{const x=session.steps[+c.dataset.i];
+    x.done=c.checked?Math.round((Date.now()-session.start)/1000):0;if(c.checked)addMark('step_done');paintSteps()})}
+/* time to flow: start of the first 30 s stretch in deep flow (or focused at depth 80+) */
+function ttfOf(r){const v=(r.samples||[]).filter(x=>VALID(x[1])).sort((a,b)=>a[0]-b[0]);let s0=null;
+  for(const x of v){const ok=x[1]===10||(FOCUSED(x[1])&&x[2]>=80);if(ok){if(s0==null)s0=x[0];if(x[0]-s0>=30)return s0}else s0=null}return null}
+const workRecs=()=>store.get('focaude_journal',[]).filter(r=>r.type==='work'&&r.samples&&r.samples.length>=30);
+/* flow window: the 3-hour span of the day with the highest share of time focused or in flow */
+function flowWindow(){const W=workRecs();if(W.length<5)return{need:5-W.length};
+  const on=Array(24).fill(0),all=Array(24).fill(0);
+  for(const r of W){const s=r.samples;for(let i=0;i<s.length;i++){const x=s[i];if(!VALID(x[1]))continue;
+    const dt=Math.min(5,Math.max(1,(s[i+1]?s[i+1][0]:x[0]+1)-x[0]));const h=new Date(r.start+x[0]*1000).getHours();all[h]+=dt;if(FOCUSED(x[1]))on[h]+=dt}}
+  let best=null;for(let h=0;h<24;h++){let a=0,o=0;for(let k=0;k<3;k++){a+=all[(h+k)%24];o+=on[(h+k)%24]}
+    if(a>=1800){const rate=o/a;if(!best||rate>best.rate)best={h,rate}}}
+  if(!best)return{need:1};
+  const tot=all.reduce((a,b)=>a+b,0),totOn=on.reduce((a,b)=>a+b,0);let a2=0,o2=0;for(let k=0;k<3;k++){a2+=all[(best.h+k)%24];o2+=on[(best.h+k)%24]}
+  const rest=tot-a2>0?(totOn-o2)/(tot-a2):null;
+  const hr=h=>{h=(h+24)%24;return (h%12||12)+(h<12?' AM':' PM')};
+  let h0=best.h,h1=best.h+2;while(all[h0%24]<300&&h0<h1)h0++;while(all[h1%24]<300&&h1>h0)h1--;   // trim to hours you actually worked
+  return{label:hr(h0)+' to '+hr(h1+1),pct:Math.round(best.rate*100),rest:rest==null?null:Math.round(rest*100)}}
+/* flow fitness (Doris): clean reps = sessions of 120+ min that reached flow; target 3 a week */
+function flowFitness(){const wk=Date.now()-7*864e5;const W=store.get('focaude_journal',[]).filter(r=>r.type==='work'&&r.start>=wk);
+  const reps=W.filter(r=>(r.end-r.start)>=120*60000&&ttfOf(r)!=null).length;
+  const flowMin=Math.round(W.reduce((a,r)=>a+(r.samples||[]).filter(x=>FOCUSED(x[1])).length,0)/60);
+  return{reps,flowMin,sessions:W.length}}
+function reflection(r){
+  const t=ttfOf(r);const deep=workRecs().filter(x=>x.deep&&x.id!==r.id&&ttfOf(x)!=null).slice(0,7).map(ttfOf);
+  const avg=deep.length?deep.reduce((a,b)=>a+b,0)/deep.length:null;
+  const steps=r.steps&&r.steps.length?`<div>Steps done: <b>${r.steps.filter(x=>x.done).length} of ${r.steps.length}</b></div>`:'';
+  const fw=flowWindow(),ff=flowFitness();
+  return `<div class="refl"><h4>Reflection</h4>
+    <div>${r.deep?'Deep work with the flow cue':'Short session (no flow cue)'}${r.runway!=null?` · runway ${r.runway} min`:''}</div>
+    <div>Time to flow: <b>${t!=null?fmt(t):'did not reach flow'}</b>${avg!=null?` · your recent deep-work average ${fmt(avg)}${t!=null?(t<avg?' (faster)':' (slower)'):''}`:''}</div>
+    ${steps}
+    <div>Flow window: ${fw.label?`<b>${fw.label}</b> (${fw.pct}% focused or in flow${fw.rest!=null?`, vs ${fw.rest}% at other hours`:''})`:`needs ${fw.need} more session${fw.need===1?'':'s'} with the clip`}</div>
+    <div>Flow fitness this week: <b>${ff.reps} of 3</b> clean reps (120+ min sessions that reached flow) · ${ff.flowMin} min focused or in flow</div></div>`}
+/* afterglow: a 20-second pause to notice the finish before moving on */
+function afterglow(show,then){if(!show){then();return}
+  const m=$('glow');m.hidden=false;let n=20;$('glowT').textContent=n;
+  const done=()=>{clearInterval(tk);m.hidden=true;then()};
+  const tk=setInterval(()=>{n--;$('glowT').textContent=n;if(n<=0)done()},1000);
+  $('glowSkip').onclick=done}
 </script></body></html>
