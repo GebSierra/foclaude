@@ -186,7 +186,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <p class="tintro">Rest your eyes on the orb. Breathe evenly through your nose. When your focus depth holds above 80, the droplets dissolve and the rain turns into a fire.</p>
     <div class="durs tl6" id="tDurs"><button data-m="2">2</button><button data-m="4" class="on">4</button><button data-m="6">6</button><button data-m="8">8</button><button data-m="10">10</button><button data-m="12">12</button></div>
     <div class="sub">minutes · use headphones for the soundscape</div>
-    <div class="field" style="width:min(420px,90vw)"><span>Audio breath cues<br><small style="color:var(--muted)">Beeps so you can close your eyes</small></span><select id="tBeeps"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+    <div class="field" style="width:min(420px,90vw)"><span>Breath cue sounds</span><select id="tBeeps"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field" style="width:min(420px,90vw)"><span>Guide until flow<br><small style="color:var(--muted)">Guidance fades once you hold flow for 30 s, returns if you drop</small></span><select id="tUntil"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field" style="width:min(420px,90vw)"><span>Breath pacer</span><select id="tPacer"><option value="0">Off</option><option value="a6" selected>Adaptive, guide to 6/min</option><option value="a5.5">Adaptive, guide to 5.5/min</option><option value="a4.5">Adaptive, guide to 4.5/min</option><option value="6">Fixed 6/min</option><option value="5.5">Fixed 5.5/min</option><option value="p:sigh">Physiological sigh (2 in, long out)</option><option value="p:flow">Flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <button class="big" id="tStart" style="max-width:320px">Begin training</button>
@@ -223,6 +223,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="field"><span>Struggle phase (minutes)<br><small style="color:var(--muted)">Distraction buzz stays on. Fatigue and stress alerts wait.</small></span><input id="setStruggle" type="number" min="0" max="60" value="15"></div>
     <div class="field"><span>Pre-session breath ritual</span><select id="setRitual"><option value="0">Off</option><option value="bal" selected>1 min, balanced (equal in and out)</option><option value="calm">1 min, calming (longer out-breath)</option><option value="sigh">1 min, physiological sigh (2 in through the nose, long out through the mouth)</option><option value="flow">1 min, flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <div class="field"><span>Don't end a session while I'm in deep focus</span><select id="setHold"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+    <div class="field"><span>Breath cue sounds<br><small style="color:var(--muted)">Soft tones that pace your breathing (rituals, training, recovery)</small></span><select id="setCues"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+    <div class="field"><span>Chimes<br><small style="color:var(--muted)">Ritual done, flow reached, session done</small></span><select id="setChimes"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field"><span>Alert sound</span><select id="setSound"><option value="1">On</option><option value="0">Off</option></select></div>
     <div class="field"><span>Desktop notifications</span><button class="ghost" id="notifBtn">Allow</button></div>
   </div>
@@ -464,7 +466,7 @@ const orb=(()=>{
     energy+=(tEnergy-energy)*.01;
     let breathe=1+.025*Math.sin(t*2*Math.PI/5.5);
     if(BR.live())breathe=.97+.07*BR.smooth();
-    if(RITUAL.on){const ph=ritualLevel(ts);breathe=.82+.3*ph.level;$('pill').textContent=ph.cue||(ph.inhale?'Breathe in':'Breathe out');$('pill').style.color='var(--gold)'}
+    if(RITUAL.on){const ph=ritualLevel(ts);breathe=.82+.3*ph.level;{const key=(ph.kind||(ph.inhale?'in':'out'))+':'+(ph.seg??'');if(RITUAL.lastCueKey!==key){RITUAL.lastCueKey=key;softCue(ph.kind||(ph.inhale?'in':'out'))}}$('pill').textContent=ph.cue||(ph.inhale?'Breathe in':'Breathe out');$('pill').style.color='var(--gold)'}
     const r=R*breathe;
     x.clearRect(0,0,W,W);
     // outer glow
@@ -601,7 +603,7 @@ function startRitual(){
   if(RITUAL.on||session)return;                 // never run two rituals or start over a live session
   clearInterval(RITUAL.tick);
   const v=$('setRitual').value;
-  Object.assign(RITUAL,{on:true,start:Date.now(),inF:v==='calm'?.4:.5,ph:0,last:0,pattern:PATTERNS[v]?v:null,t0:0,reset:false});
+  Object.assign(RITUAL,{on:true,start:Date.now(),inF:v==='calm'?.4:.5,ph:0,last:0,pattern:PATTERNS[v]?v:null,t0:0,reset:false,lastCueKey:null});
   $('startBtn').textContent='Skip';$('clockSub').textContent='Settle in. Breathe with the orb. Then work on one thing.';
   const myTick=RITUAL.tick=setInterval(()=>{if(RITUAL.tick!==myTick){clearInterval(myTick);return}
     const left=60-(Date.now()-RITUAL.start)/1000;$('clock').textContent=fmt(Math.max(0,left));if(left<=0){clearInterval(myTick);endRitual(true)}},250);
@@ -615,7 +617,7 @@ function endRitual(go){clearInterval(RITUAL.tick);RITUAL.tick=null;if(!RITUAL.on
 /* 30-second sigh reset, offered on distraction and stress alerts; the session keeps running */
 function startReset(){
   if(RITUAL.on)return;clearInterval(RITUAL.tick);showView('vFocus');
-  Object.assign(RITUAL,{on:true,start:Date.now(),pattern:'sigh',t0:0,reset:true});
+  Object.assign(RITUAL,{on:true,start:Date.now(),pattern:'sigh',t0:0,reset:true,lastCueKey:null});
   if(session)addMark('sigh_reset');
   RITUAL.tick=setInterval(()=>{if(Date.now()-RITUAL.start>30000)endRitual(false)},250);
 }
@@ -683,11 +685,11 @@ function endSession(){
 /* ---- alerts ---- */
 let actx=null;
 function chime(kind){
-  if($('setSound').value!=='1')return;
+  if((kind==='ritual'||kind==='done'||kind==='flow')?$('setChimes').value!=='1':$('setSound').value!=='1')return;
   try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();
-    const notes=kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
+    const notes=kind==='flow'?[523,659]:kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
     notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain(),t0=actx.currentTime+i*.28;
-      o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(.18,t0+.03);g.gain.exponentialRampToValueAtTime(.0001,t0+1.4);
+      o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(.09,t0+.06);g.gain.exponentialRampToValueAtTime(.0001,t0+1.6);
       o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+1.5)})}catch(e){}
 }
 /* distraction alerts: quick off switch + 10 minute snooze (app chime and clip buzz) */
@@ -1450,14 +1452,19 @@ setTimeout(()=>{fetch('http://127.0.0.1:47321/activity?days=14',{cache:'no-store
 function tone(f,dur,vol=.12,at=0){try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();const t0=actx.currentTime+at,o=actx.createOscillator(),g=actx.createGain();
   o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
   o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+dur+.05)}catch(e){}}
+function softCue(kind){
+  if(!cuesOn())return;
+  try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();const t0=actx.currentTime;
+    const spec=kind==='in'?[294,349,.9,.045]:kind==='topup'?[349,392,.35,.035]:kind==='out'?[349,262,1.4,.035]:null;if(!spec)return;
+    const [f0,f1,dur,vol]=spec,lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;lp.connect(actx.destination);
+    for(const [mul,v] of [[1,vol],[.5,vol*.6]]){const o=actx.createOscillator(),g=actx.createGain();o.type='sine';
+      o.frequency.setValueAtTime(f0*mul,t0);o.frequency.linearRampToValueAtTime(f1*mul,t0+dur*.8);
+      g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+.12);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+      o.connect(g).connect(lp);o.start(t0);o.stop(t0+dur+.05)}}catch(e){}}
 function breathCue(ph){
   const key=(ph.kind||(ph.inhale?'in':'out'))+':'+(ph.seg??'');
   if(train.lastCueKey===key)return;train.lastCueKey=key;
-  if($('tBeeps').value!=='1')return;
-  const k=ph.kind||(ph.inhale?'in':'out');
-  if(k==='in')tone(880,.14);
-  else if(k==='topup')tone(988,.12);
-  else if(k==='out')tone(440,.5,.1);
+  softCue(ph.kind||(ph.inhale?'in':'out'));
 }
 function flowGate(d){
   if($('tUntil').value!=='1')return;
@@ -1466,11 +1473,15 @@ function flowGate(d){
     train.deepSince=deep?(train.deepSince||now):0;
     if(train.deepSince&&now-train.deepSince>=30000){
       train.guideOff=true;train.lowSince=0;train.flowAt=train.flowAt??Math.round((now-train.start)/1000);
-      $('tCue').textContent="You're in flow. Breathe naturally.";tone(660,.25,.08);tone(880,.4,.08,.25)}
+      $('tCue').textContent="You're in flow. Breathe naturally.";chime('flow')}
   }else{
     train.lowSince=low?(train.lowSince||now):0;
     if(train.lowSince&&now-train.lowSince>=30000){train.guideOff=false;train.deepSince=0;train.lastCueKey=null;$('tCue').textContent='Back to the breath'}
   }
 }
-['tBeeps','tUntil'].forEach(k=>{const el=$(k),v=store.get('focaude_set_'+k,null);if(v!==null)el.value=v;el.onchange=()=>store.set('focaude_set_'+k,el.value)});
+['tUntil','setChimes'].forEach(k=>{const el=$(k),v=store.get('focaude_set_'+k,null);if(v!==null)el.value=v;el.onchange=()=>store.set('focaude_set_'+k,el.value)});
+/* one breath-cue switch, shown in Settings and on the Training screen */
+{const v=store.get('focaude_set_setCues',null);if(v!==null){$('setCues').value=v;$('tBeeps').value=v}
+ const sync=e=>{$('setCues').value=$('tBeeps').value=e.target.value;store.set('focaude_set_setCues',e.target.value)};$('setCues').onchange=sync;$('tBeeps').onchange=sync}
+const cuesOn=()=>$('setCues').value==='1',chimesOn=()=>$('setChimes').value==='1';
 </script></body></html>
