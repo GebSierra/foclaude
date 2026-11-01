@@ -30,7 +30,7 @@ nav button.on{background:var(--panel2);color:var(--text)}
 .conn .dot{width:8px;height:8px;border-radius:50%;background:#555}
 .conn.on .dot{background:#4fd18b;box-shadow:0 0 8px #4fd18b}
 .conn.on{color:var(--text)}
-section[hidden]{display:none!important}
+section[hidden],[hidden]{display:none!important}
 
 /* ---- Focus view ---- */
 .focus{flex:1;display:grid;grid-template-columns:1fr 320px;gap:28px;margin-top:28px;align-items:start}
@@ -128,6 +128,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 .strip i{position:absolute;top:0;bottom:0}
 .chip{white-space:nowrap;border:1px solid var(--line);background:var(--panel2);border-radius:99px;padding:2px 10px;font-size:12px;cursor:pointer}
 .tl2{display:grid;grid-template-columns:1fr 70px 46px 118px;gap:8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
+.volSlider{accent-color:#e9bd62;width:150px}
+.tvol{position:absolute;top:26px;left:24px;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;opacity:.6}.tvol:hover{opacity:1}
 @media (max-width:860px){.focus,.journal{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}nav button{padding:7px 10px}}
 </style>
 </head>
@@ -161,6 +163,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
       <div class="durs" id="durs"><button data-m="25" class="on">25</button><button data-m="50">50</button><button data-m="90">90</button><button data-m="0">∞</button><button data-m="c" id="durCustom">Custom</button></div>
       <div class="row" id="customRow" hidden style="margin:-4px 0 12px;align-items:center"><input id="customMin" type="number" min="1" max="300" value="40" style="width:90px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit"><span style="color:var(--muted);font-size:13px">minutes</span></div>
       <label class="field" style="border:0;padding:0 0 8px;cursor:pointer"><span style="font-size:13px;color:var(--muted)" id="daLabel">Distraction alerts</span><span class="sw"><input type="checkbox" id="daOn" checked><i></i></span></label>
+      <label class="field volrow" style="border:0;padding:0 0 10px"><span style="font-size:13px;color:var(--muted);white-space:nowrap">Volume <span class="volPct"></span></span><input type="range" class="volSlider" min="0" max="100" step="1"></label>
       <label class="field" style="border:0;padding:0 0 12px;cursor:pointer"><span style="font-size:13px;color:var(--muted)">Rain-to-fire soundscape</span><span class="sw"><input type="checkbox" id="wsSound" checked><i></i></span></label>
       <button class="big" id="startBtn">Start session</button>
       <div class="marks" id="marks" hidden>
@@ -199,6 +202,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="tcue" id="tCue"></div>
     <div class="thud"><span id="tClock">4:00</span><span id="tState">–</span><span id="tClear">Clearance 0%</span><span id="tPace"></span></div>
     <button class="ghost tstop" id="tStop">End</button>
+    <div class="tvol"><span class="volPct"></span><input type="range" class="volSlider" min="0" max="100" step="1"></div>
   </div>
 </section>
 
@@ -224,6 +228,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="field"><span>Struggle phase (minutes)<br><small style="color:var(--muted)">Distraction buzz stays on. Fatigue and stress alerts wait.</small></span><input id="setStruggle" type="number" min="0" max="60" value="15"></div>
     <div class="field"><span>Pre-session breath ritual</span><select id="setRitual"><option value="0">Off</option><option value="bal" selected>1 min, balanced (equal in and out)</option><option value="calm">1 min, calming (longer out-breath)</option><option value="sigh">1 min, physiological sigh (2 in through the nose, long out through the mouth)</option><option value="flow">1 min, flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <div class="field"><span>Don't end a session while I'm in deep focus</span><select id="setHold"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+    <div class="field"><span>Volume <span class="volPct"></span><br><small style="color:var(--muted)">Everything: soundscape, breath cues, chimes, alerts</small></span><input type="range" class="volSlider" min="0" max="100" step="1" style="width:200px"></div>
     <div class="field"><span>Breath cue sounds<br><small style="color:var(--muted)">Soft tones that pace your breathing (rituals, training, recovery)</small></span><select id="setCues"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field"><span>Chimes<br><small style="color:var(--muted)">Ritual done, flow reached, session done</small></span><select id="setChimes"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field"><span>Alert sound</span><select id="setSound"><option value="1">On</option><option value="0">Off</option></select></div>
@@ -403,6 +408,8 @@ const $=id=>document.getElementById(id);
 const hx=b=>[...b].map(x=>x.toString(16).padStart(2,'0')).join(' ');
 function rlog(...m){const el=$('rawlog');el.textContent+=new Date().toLocaleTimeString()+'  '+m.join(' ')+'\n';
   if(el.textContent.length>200000)el.textContent=el.textContent.slice(-150000);el.scrollTop=el.scrollHeight}
+let VOL=(()=>{try{const v=localStorage.getItem('focaude_vol');return v==null?.8:+v}catch(e){return .8}})();
+const V=x=>Math.max(.0001,x*VOL);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}if((k==='focaude_journal'||k==='focaude_streaks')&&typeof scheduleSync==='function')scheduleSync()}};
 
@@ -690,7 +697,7 @@ function chime(kind){
   try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();
     const notes=kind==='flow'?[523,659]:kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
     notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain(),t0=actx.currentTime+i*.28;
-      o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(.09,t0+.06);g.gain.exponentialRampToValueAtTime(.0001,t0+1.6);
+      o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(V(.09),t0+.06);g.gain.exponentialRampToValueAtTime(.0001,t0+1.6);
       o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+1.5)})}catch(e){}
 }
 /* distraction alerts: quick off switch + 10 minute snooze (app chime and clip buzz) */
@@ -848,7 +855,7 @@ const synth=(()=>{
   function start(quiet){
     ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();ctx.resume();
     master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);
-    master.gain.linearRampToValueAtTime(.9,ctx.currentTime+3);
+    master.gain.linearRampToValueAtTime(.9*VOL,ctx.currentTime+3);
     // rain bed: white noise, band-limited
     rainG=ctx.createGain();rainG.gain.value=quiet?0:.5;rainG.connect(master);
     const w=loop(noiseBuf('white')),hp=ctx.createBiquadFilter(),lp=ctx.createBiquadFilter();
@@ -875,10 +882,11 @@ const synth=(()=>{
   let pTone=null,pGain=null,lastIn=null;
   function pace(ph){if(!ctx||!master)return;
     if(!pTone){pTone=ctx.createOscillator();pTone.type='sine';pGain=ctx.createGain();pGain.gain.value=0;pTone.connect(pGain).connect(master);pTone.start()}
-    const t=ctx.currentTime;pTone.frequency.setTargetAtTime(174+46*ph.level,t,.2);pGain.gain.setTargetAtTime(.035+.03*ph.level,t,.3)}
+    const t=ctx.currentTime;pTone.frequency.setTargetAtTime(174+46*ph.level,t,.2);pGain.gain.setTargetAtTime(V(.035+.03*ph.level),t,.3)}
   const _stop=stop;
   function stop2(){if(pTone){try{pTone.stop()}catch(e){}pTone=null}onlyL=null;_stop()}
-  return{start,mix,stop:stop2,pace,only};
+  function setVol(){if(master&&ctx)master.gain.setTargetAtTime(.9*VOL,ctx.currentTime,.2)}
+  return{start,mix,stop:stop2,pace,only,setVol};
 })();
 
 /* ---- sound facade: your own recordings if present in the folder, else synth ----
@@ -896,7 +904,7 @@ const sound=(()=>{
   function start(){if(on)return;on=true;clearTimeout(pend);clearInterval(timer);usingFiles=!!(files.rain||files.fire);
     if(usingFiles){if(!(files.rain&&files.fire)){synth.start(true);synth.only(files.rain?'fire':'rain');synthOn=true}
       for(const k of ['rain','fire'])if(files[k]){files[k].volume=0;files[k].currentTime=0;files[k].play().catch(()=>{})}
-      timer=setInterval(()=>{for(const k of ['rain','fire']){const a=files[k];if(!a)continue;a.volume=Math.max(0,Math.min(1,a.volume+(tgt[k]-a.volume)*.08))}},100)}
+      timer=setInterval(()=>{for(const k of ['rain','fire']){const a=files[k];if(!a)continue;a.volume=Math.max(0,Math.min(1,a.volume+(tgt[k]*VOL-a.volume)*.08))}},100)}
     else{synth.start();synthOn=true}}
   function mix(c,chaos){if(!on)return;
     if(usingFiles){tgt.rain=Math.pow(1-c,1.3)*(.45+.4*chaos);tgt.fire=Math.min(1,c*1.15)*.85;if(synthOn)synth.mix(c,chaos)}else synth.mix(c,chaos)}
@@ -993,7 +1001,7 @@ function endTraining(full){
   if(s.recovery){const rec={id:s.start,type:'recovery',kind:s.recovery,start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:[],note:'',rating:null};
     rec.stats=stats(rec);const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);showView('vJournal');renderJournal(rec.id);return}
   const rec={id:s.start,type:'training',start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:s.marks,note:'',rating:null,
-    maxClear:Math.round(s.maxClear*100),secAbove80:s.above,flowAt:s.flowAt??null,smart:s.smart?{arm:s.smart.arm,baseBr:s.smart.baseBr,deepenAt:s.smart.deepenAt??null,timeToFlow:s.flowAt??null,usedSignature:!!s.smart.sig}:null,
+    maxClear:Math.round(s.maxClear*100),secAbove80:s.above,flowAt:s.flowAt??null,smart:s.smart?{stressed:!!s.smart.stressed,arm:s.smart.arm,baseBr:s.smart.baseBr,deepenAt:s.smart.deepenAt??null,timeToFlow:s.flowAt??null,usedSignature:!!s.smart.sig}:null,
     pacer:s.pacer?{pattern:s.pattern||null,sync:s.syncLog&&s.syncLog.length?Math.round(s.syncLog.reduce((a,b)=>a+b,0)/s.syncLog.length):null,adaptive:s.adaptive,target:s.target,endPace:s.pace,startBr:s.brs[0]??null,endBr:s.brs.length?+(s.brs.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,s.brs.length)).toFixed(1):null,followPct:s.follow+s.miss?Math.round(100*s.follow/(s.follow+s.miss)):null}:null};
   rec.stats=stats(rec);
   const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
@@ -1453,7 +1461,7 @@ setTimeout(()=>{fetch('http://127.0.0.1:47321/activity?days=14',{cache:'no-store
    two short high beeps = breathe in twice; one low tone = breathe out
    ========================================================= */
 function tone(f,dur,vol=.12,at=0){try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();const t0=actx.currentTime+at,o=actx.createOscillator(),g=actx.createGain();
-  o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+  o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(V(vol),t0+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
   o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+dur+.05)}catch(e){}}
 function softCue(kind){
   if(!cuesOn())return;
@@ -1462,7 +1470,7 @@ function softCue(kind){
     const [f0,f1,dur,vol]=spec,lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;lp.connect(actx.destination);
     for(const [mul,v] of [[1,vol],[.5,vol*.6]]){const o=actx.createOscillator(),g=actx.createGain();o.type='sine';
       o.frequency.setValueAtTime(f0*mul,t0);o.frequency.linearRampToValueAtTime(f1*mul,t0+dur*.8);
-      g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+.12);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+      g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(V(v),t0+.12);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
       o.connect(g).connect(lp);o.start(t0);o.stop(t0+dur+.05)}}catch(e){}}
 function breathCue(ph){
   const key=(ph.kind||(ph.inhale?'in':'out'))+':'+(ph.seg??'');
@@ -1530,11 +1538,12 @@ function smartStart(){
 function smartStep(d){
   const S=train.smart,now=Date.now(),el=(now-S.t0)/1000;
   if(S.baseBr==null&&d.br!=null&&el>8)S.baseBr=d.br;
+  if(el<30&&(d.currentState===7||(d.br!=null&&d.br>=16)))S.stressed=true;
   if(S.phase==='settle'){
     if(S.arm==='slow'&&S.baseBr!=null&&!train.adaptive){train.adaptive=true;train.target=Math.max(4.5,Math.min(7,+(S.baseBr*.6).toFixed(1)));train.pace=Math.min(14,+(S.baseBr*.9).toFixed(1));train.lastAdapt=now}
     const recent=BR.buf.slice(-12).map(p=>p[1]);if(recent.length>=8)S.amps.push(Math.max(...recent)-Math.min(...recent));
     const calm=d.br!=null&&S.baseBr!=null&&d.br<=S.baseBr*.8;
-    if(el>=150||(el>=75&&calm)){                       // settled: move to deepening
+    if(el>=(S.stressed?210:150)||(el>=(S.stressed?120:75)&&calm)){                       // settled: move to deepening
       S.phase='deepen';S.deepenAt=Math.round((now-train.start)/1000);
       train.pattern=null;train.adaptive=false;train.inF=.45;
       const base=S.baseBr??12;train.pace=S.sig?Math.max(4.5,Math.min(10,S.sig.br)):Math.max(5.5,Math.min(9,+(base*.75).toFixed(1)));
@@ -1547,4 +1556,11 @@ function smartStep(d){
   }
 }
 paintSmartInfo();
+
+/* volume: one level for everything (soundscape, breath cues, chimes, alerts) */
+function setVolume(v){VOL=Math.max(0,Math.min(1,v));try{localStorage.setItem('focaude_vol',VOL)}catch(e){}
+  document.querySelectorAll('.volSlider').forEach(s=>{if(+s.value!==Math.round(VOL*100))s.value=Math.round(VOL*100)});
+  document.querySelectorAll('.volPct').forEach(s=>s.textContent=Math.round(VOL*100)+'%');
+  try{synth.setVol()}catch(e){}}
+document.querySelectorAll('.volSlider').forEach(s=>{s.value=Math.round(VOL*100);s.oninput=e=>setVolume(e.target.value/100)});setVolume(VOL);
 </script></body></html>
