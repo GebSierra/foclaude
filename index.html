@@ -299,6 +299,12 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
   <div class="big2" id="glowT">20</div>
   <button class="ghost" id="glowSkip">Done</button>
 </div></div>
+<div class="askwrap" id="brk" hidden><div class="card askcard glow">
+  <h3>Boring break</h3>
+  <p style="color:var(--muted);font-size:14px;margin:0">Step away from the screen. Tea, a window, or a blank wall. No phone. Let the problem work on you.</p>
+  <div class="big2" id="brkT">5:00</div>
+  <button class="ghost" id="brkEnd">Back to work</button>
+</div></div>
 <div class="askwrap" id="resume" hidden><div class="card askcard">
   <h3>Ready to resume</h3>
   <p style="margin:0 0 12px;color:var(--muted);font-size:13px">Ten seconds now saves the warm-up later. It also helps your mind let go of this task.</p>
@@ -709,6 +715,7 @@ function sessionSample(d,t){
   session.samples.push([Math.round((t-session.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10),d.wave??null]);
   const s=d.currentState,dSec=+$('setDistract').value||30,fSec=+$('setFatigue').value||60;
   session.distractSince=s===4?(session.distractSince||t):0;
+  stuckCheck(d,t);
   session.fatigueSince=s===9?(session.fatigueSince||t):0;
   if(t-session.lastAlert<90000)return;                       // one alert per 90 s at most
   if(!distractMuted()&&session.distractSince&&t-session.distractSince>=dSec*1000){
@@ -782,14 +789,15 @@ $('marks').onclick=e=>{const b=e.target.closest('button');if(b)addMark(b.dataset
 document.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select'))return;if(e.key==='Escape'&&train)endTraining(false);
   if(e.key==='f'||e.key==='F')addMark('focused');if(e.key==='d'||e.key==='D')addMark('drifted');if(e.key==='t'||e.key==='T')addMark('tired');if((e.key==='r'||e.key==='R')&&session)midResume()});
 function notify(title,body,kind){
-  chime(kind);const a=$('alert');a.innerHTML='<b>'+title+'.</b> '+body+(kind==='distract'?' <button data-a="alert_right">Right, I drifted</button><button data-a="alert_tired">Trying, but tired</button><button data-a="alert_wrong">Wrong, I was focused</button><button data-a="snooze">Snooze 10 min</button><button data-a="sigh">30 s sigh reset</button>':kind==='globe'?' <button data-a="sigh">Settle for 30 s</button><button data-a="globe_skip">Not now</button>':'');
+  chime(kind);const a=$('alert');a.innerHTML='<b>'+title+'.</b> '+body+(kind==='distract'?' <button data-a="alert_right">Right, I drifted</button><button data-a="alert_tired">Trying, but tired</button><button data-a="alert_wrong">Wrong, I was focused</button><button data-a="snooze">Snooze 10 min</button><button data-a="sigh">30 s sigh reset</button>':kind==='stuck_hot'?' <button data-a="brk">Take a 5 min break</button><button data-a="globe_skip">Got it</button>':kind==='stuck_cold'?' <button data-a="globe_skip">Got it</button>':kind==='globe'?' <button data-a="sigh">Settle for 30 s</button><button data-a="globe_skip">Not now</button>':'');
   a.onclick=e=>{const b=e.target.closest('button');if(!b)return;a.classList.remove('show');
     if(b.dataset.a==='globe_skip')return;
+    if(b.dataset.a==='brk'){boringBreak();return}
     if(b.dataset.a==='snooze'){snoozeDistract(10);return}
     if(b.dataset.a==='sigh'){startReset();return}
     addMark(b.dataset.a);
     if(b.dataset.a==='alert_tired'&&session){session.tiredMarks=(session.tiredMarks||0)+1;
-      setTimeout(()=>{a.innerHTML=session.tiredMarks>=2?'<b>Noted.</b> Tired twice now. A 5 minute break will likely buy you more than pushing through.':'<b>Noted.</b> Tired, not distracted. Slow your out-breath for a minute.';a.onclick=null;a.classList.add('show');setTimeout(()=>a.classList.remove('show'),6000)},450)}};a.classList.add('show');clearTimeout(notify.hide);notify.hide=setTimeout(()=>a.classList.remove('show'),kind==='globe'?20000:7000);
+      setTimeout(()=>{a.innerHTML=session.tiredMarks>=2?'<b>Noted.</b> Tired twice now. A 5 minute break will likely buy you more than pushing through.':'<b>Noted.</b> Tired, not distracted. Slow your out-breath for a minute.';a.onclick=null;a.classList.add('show');setTimeout(()=>a.classList.remove('show'),6000)},450)}};a.classList.add('show');clearTimeout(notify.hide);notify.hide=setTimeout(()=>a.classList.remove('show'),kind==='globe'||kind.startsWith('stuck')?20000:7000);
   try{if(document.hidden&&Notification.permission==='granted')new Notification('Focaude: '+title,{body})}catch(e){}
 }
 $('notifBtn').onclick=async()=>{try{const p=await Notification.requestPermission();$('notifBtn').textContent=p==='granted'?'Allowed':'Blocked'}catch(e){}};
@@ -1699,4 +1707,26 @@ function afterglow(show,then){if(!show){then();return}
   const done=()=>{clearInterval(tk);m.hidden=true;then()};
   const tk=setInterval(()=>{n--;$('glowT').textContent=n;if(n<=0)done()},1000);
   $('glowSkip').onclick=done}
+/* stuck coaching (Kotler): after 20 min with no flow yet, tell frustration from boredom.
+   Frustrated (stressed) = close to flow: shrink the step or take a boring break.
+   Bored (calm but shallow) = under-challenged: raise the stakes. Once per session. */
+function stuckCheck(d,t){if(!session)return;
+  const s=d.currentState,ok=s===10||(FOCUSED(s)&&d.focusLevel>=80);
+  if(ok){session.fr0=session.fr0||t;if(t-session.fr0>=30000)session.reached=true}else session.fr0=0;
+  const el=(t-session.start)/1000;
+  if(session.reached||session.stuckShown||el<1200||t-(session.stuckAt||0)<60000)return;
+  session.stuckAt=t;
+  const win=session.samples.filter(x=>x[0]>=el-300&&VALID(x[1]));if(win.length<120)return;
+  const share=k=>win.filter(x=>x[1]===k).length/win.length;
+  if(share(7)>=.4){session.stuckShown=1;addMark('stuck_frustrated');
+    notify('Frustrated is close',"Twenty minutes in and no flow yet, but you're running hot, which is closer to flow than boredom. Shrink the next step to something you can do in five minutes, or take a short boring break and let it release.",'stuck_hot')}
+  else if(share(5)>=.5){session.stuckShown=1;addMark('stuck_bored');
+    notify('Calm but shallow',"Twenty minutes in and no flow yet. You're settled but not stretched. Raise the stakes: ask a harder question, or set a tight deadline for the next step.",'stuck_cold')}
+}
+function boringBreak(){const m=$('brk');m.hidden=false;if(session)addMark('boring_break');
+  if(session&&session.sound)sound.mix(0,0);
+  let n=300;const paint=()=>$('brkT').textContent=fmt(n);paint();
+  const done=()=>{clearInterval(tk);m.hidden=true;chime('ritual')};
+  const tk=setInterval(()=>{n--;paint();if(n<=0)done()},1000);
+  $('brkEnd').onclick=done}
 </script></body></html>
