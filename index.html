@@ -118,6 +118,16 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 .askwrap{position:fixed;inset:0;background:rgba(5,6,8,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:6;padding:16px}
 .askwrap[hidden]{display:none}
 .askcard{max-width:380px;width:100%}
+.comp{margin-top:28px}
+.hours{display:flex;align-items:flex-end;gap:4px;height:150px;margin:10px 0 4px}
+.hours div{flex:1;background:var(--panel2);border-radius:5px 5px 0 0;position:relative;min-height:2px}
+.hours div.hot{background:linear-gradient(180deg,#e9bd62,#c98a2a)}
+.hours div span{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted)}
+.hlab{display:flex;gap:4px;font-size:10px;color:var(--muted)}.hlab span{flex:1;text-align:center}
+.strip{position:relative;height:16px;background:var(--panel2);border-radius:5px;overflow:hidden;margin:3px 0 9px}
+.strip i{position:absolute;top:0;bottom:0}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--panel2);border-radius:99px;padding:2px 10px;font-size:12px;cursor:pointer}
+.tl2{display:grid;grid-template-columns:1fr 70px 46px 118px;gap:8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
 @media (max-width:860px){.focus,.journal{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}nav button{padding:7px 10px}}
 </style>
 </head>
@@ -125,7 +135,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 <div class="app">
 <header>
   <div class="brand">Focaude</div>
-  <nav><button data-v="vFocus" class="on">Focus</button><button data-v="vTrain">Training</button><button data-v="vJournal">Journal</button><button data-v="vSettings">Settings</button></nav>
+  <nav><button data-v="vFocus" class="on">Focus</button><button data-v="vTrain">Training</button><button data-v="vJournal">Journal</button><button data-v="vComp">Computer</button><button data-v="vSettings">Settings</button></nav>
   <button class="conn" id="fsBtn" title="Full screen" aria-label="Full screen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
   <button class="conn" id="connBtn"><span class="dot"></span><span id="connTxt">Connect clip</span></button>
 </header>
@@ -187,6 +197,12 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="thud"><span id="tClock">4:00</span><span id="tState">–</span><span id="tClear">Clearance 0%</span><span id="tPace"></span></div>
     <button class="ghost tstop" id="tStop">End</button>
   </div>
+</section>
+
+<section id="vComp" class="comp" hidden>
+  <div class="row" style="align-items:center;margin-bottom:6px"><div class="durs" id="compRange" style="grid-template-columns:repeat(3,110px);margin:0"><button data-d="1" class="on">Today</button><button data-d="7">7 days</button><button data-d="14">14 days</button></div>
+    <span id="compNote" style="color:var(--muted);font-size:13px;margin-left:8px"></span></div>
+  <div id="compBody"><div class="empty">Loading…</div></div>
 </section>
 
 <section id="vJournal" class="journal" hidden>
@@ -1312,4 +1328,113 @@ function breathStats(samples){
   if(per.length<5)return{steady:null,rate:null,n:per.length};
   const m=per.reduce((a,b)=>a+b,0)/per.length,sd=Math.sqrt(per.reduce((a,b)=>a+(b-m)**2,0)/per.length);
   return{steady:Math.max(0,Math.round(100-100*sd/m)),rate:+(60/m).toFixed(1),n:per.length}}
+
+
+/* =========================================================
+   COMPUTER — all-day app/site log from the watcher:
+   task switching, time of day, where time goes.
+   ========================================================= */
+const CATS=['deep','shallow','distraction','neutral'];
+const CATNAME={deep:'Deep work',shallow:'Shallow work',distraction:'Distraction',neutral:'Other'};
+const CATCOL={deep:'var(--focus)',shallow:'var(--calm)',distraction:'var(--stress)',neutral:'var(--idle)'};
+const CATRULES=[
+  ['deep',/obsidian|logos|word\b|winword|blue ?letter|blb\.org|biblehub|biblegateway|accordance|docs\.google|google docs|vs code|notion|sermon|kindle|readwise reader/i],
+  ['shallow',/outlook|gmail|mail\.google|superhuman|planning ?center|planningcenteronline|churchcenter|ticktick|calendar|slack|teams|clearstream|toggl|excel|sheets|drive\.google|zoom|whatsapp|messages|canva|claude/i],
+  ['distraction',/youtube|facebook|instagram|twitter|x\.com|reddit|tiktok|netflix|espn|news|cnn|fox|amazon|ebay|hulu|twitch|linkedin/i]];
+function catOf(label){const o=store.get('focaude_cats',{});if(o[label])return o[label];for(const [c,re] of CATRULES)if(re.test(label))return c;return'neutral'}
+function compLabel(r){const [,app,site,title]=r;if(!app)return'Desktop';return winLabel(app,title,site)}
+/* turn the change log into timed segments, merge same-label runs, absorb blips under 10 s */
+function compSegments(rows){
+  const now=Date.now()/1000,seg=[];
+  rows=rows.filter(r=>r[0]<=now);
+  for(let i=0;i<rows.length;i++){const r=rows[i],next=rows[i+1];let end=Math.max(r[0],next?next[0]:Math.min(now,r[0]+3600));
+    if(end-r[0]>3*3600)end=r[0]+60;                                  // a gap with no log: watcher was off
+    const inactive=r[1]==='(asleep)'||r[4]===1;
+    seg.push({s:r[0],e:end,label:inactive?null:compLabel(r)})}
+  const m=[];for(const x of seg){const p=m[m.length-1];if(p&&p.label===x.label&&Math.abs(p.e-x.s)<5)p.e=x.e;else m.push({...x})}
+  for(let i=1;i<m.length-1;i++){const a=m[i-1],b=m[i],c=m[i+1];if(b.label&&a.label&&a.label===c.label&&b.e-b.s<10){a.e=c.e;m.splice(i,2);i--}}
+  return m}
+function compAnalyse(rows){
+  const seg=compSegments(rows),act=seg.filter(x=>x.label&&x.e>x.s);
+  const tot={},cat={deep:0,shallow:0,distraction:0,neutral:0},hourAct=Array(24).fill(0),hourSw=Array(24).fill(0),dwell=[];
+  let sw=0,rapid=0,longest={d:0};
+  for(let i=0;i<seg.length;i++){const x=seg[i];if(!x.label)continue;const d=x.e-x.s;tot[x.label]=(tot[x.label]||0)+d;cat[catOf(x.label)]+=d;
+    // spread active time over clock hours
+    let t=x.s;while(t<x.e){const h=new Date(t*1000).getHours(),edge=Math.min(x.e,Math.floor(t/3600+1)*3600);hourAct[h]+=edge-t;t=edge}
+    if(d>longest.d)longest={d,label:x.label,s:x.s};
+    const p=seg[i-1];
+    if(p&&p.label&&p.label!==x.label&&Math.abs(p.e-x.s)<5){sw++;hourSw[new Date(x.s*1000).getHours()]++;dwell.push(p.e-p.s);if(p.e-p.s<30)rapid++}}
+  const active=Object.values(tot).reduce((a,b)=>a+b,0);
+  dwell.sort((a,b)=>a-b);
+  return{seg,tot,cat,active,sw,rapid,perHr:active?sw/(active/3600):0,median:dwell.length?dwell[Math.floor(dwell.length/2)]:0,longest,hourAct,hourSw}}
+const hm=s=>{s=Math.round(s/60);return s>=60?Math.floor(s/60)+'h '+String(s%60).padStart(2,'0')+'m':s+'m'};
+const hr12=h=>((h+11)%12+1)+(h<12?' AM':' PM');
+let compDays=1,compRows=null;
+$('compRange').onclick=e=>{const b=e.target.closest('button');if(!b)return;compDays=+b.dataset.d;[...$('compRange').children].forEach(x=>x.classList.toggle('on',x===b));loadComp()};
+async function loadComp(){
+  $('compNote').textContent='';
+  try{const c=new AbortController();setTimeout(()=>c.abort(),4000);
+    const r=await fetch('http://127.0.0.1:47321/activity?days='+Math.max(compDays,14),{cache:'no-store',signal:c.signal});
+    const d=await r.json();compRows=d.rows;renderComp();uploadCompSummaries(d.rows)}
+  catch(e){$('compBody').innerHTML='<div class="card"><h3>Watcher not running</h3><p>This tab reads the all-day log on your PC. Double-click <b>Start Focaude Watcher.bat</b> in C:\\focaude (or run <b>Install Focaude Watcher at Startup.bat</b> once), then come back. It only works on the PC, not the phone.</p></div>'}}
+function renderComp(){
+  const since=new Date();since.setHours(0,0,0,0);since.setDate(since.getDate()-(compDays-1));
+  const rows=compRows.filter(r=>r[0]>=since/1000);
+  if(rows.length<3){$('compBody').innerHTML='<div class="empty">No activity logged in this range yet. The watcher logs from the moment it starts.</div>';return}
+  const a=compAnalyse(rows),days=new Set(rows.map(r=>new Date(r[0]*1000).toDateString())).size;
+  // when do you switch most? switches per active hour, by clock hour (only hours with 10+ active minutes)
+  const rate=a.hourAct.map((t,h)=>t>=600?a.hourSw[h]/(t/3600):null);
+  const ranked=rate.map((v,h)=>[v,h]).filter(x=>x[0]!=null).sort((x,y)=>y[0]-x[0]);const hot=new Set(ranked.slice(0,3).map(x=>x[1]));
+  const lo=Math.min(...a.hourAct.map((t,h)=>t>60?h:24),8),hi=Math.max(...a.hourAct.map((t,h)=>t>60?h:0),20);
+  const maxR=Math.max(1,...rate.filter(v=>v!=null));
+  const bars=[],labs=[];for(let h=lo;h<=hi;h++){const v=rate[h];bars.push(`<div class="${hot.has(h)?'hot':''}" style="height:${v==null?2:Math.max(4,v/maxR*100)}%" title="${hr12(h)}: ${v==null?'little activity':Math.round(v)+' switches per hour'}">${v!=null&&hot.has(h)?'<span>'+Math.round(v)+'</span>':''}</div>`);labs.push(`<span>${h%3===0?hr12(h).replace(' ',''):''}</span>`)}
+  // day strips
+  const dayList=[...new Set(rows.map(r=>new Date(r[0]*1000).toDateString()))].slice(-7).reverse();
+  const strips=dayList.map(ds=>{const d0=new Date(ds);d0.setHours(6,0,0,0);const s0=d0/1000,span=18*3600;
+    const segs=a.seg.filter(x=>x.label&&new Date(x.s*1000).toDateString()===ds).map(x=>{const l=Math.max(0,(x.s-s0)/span*100),w=Math.max(.15,(x.e-x.s)/span*100);return l<100?`<i style="left:${l}%;width:${Math.min(w,100-l)}%;background:${CATCOL[catOf(x.label)]}" title="${x.label.replace(/"/g,'')}"></i>`:''}).join('');
+    return `<div style="font-size:12px;color:var(--muted)">${new Date(ds).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</div><div class="strip">${segs}</div>`}).join('');
+  const top=Object.entries(a.tot).sort((x,y)=>y[1]-x[1]).slice(0,12);
+  const pct=k=>a.active?Math.round(100*a.cat[k]/a.active):0;
+  const worst=ranked[0];
+  $('compNote').textContent=`${days} day${days>1?'s':''} · ${hm(a.active)} active at the computer`;
+  $('compBody').innerHTML=`
+    <div class="stats">
+      <div class="stat"><b>${Math.round(a.perHr)}</b><span>Switches per active hour</span></div>
+      <div class="stat"><b>${a.sw?Math.round(100*a.rapid/a.sw):0}%</b><span>Rapid switches (under 30 s)</span></div>
+      <div class="stat"><b>${hm(a.median)}</b><span>Typical time before switching</span></div>
+      <div class="stat"><b>${hm(a.longest.d||0)}</b><span>Longest stretch${a.longest.label?' · '+a.longest.label.replace(/</g,''):''}</span></div>
+      <div class="stat"><b>${pct('deep')}%</b><span>Deep work time</span></div>
+      <div class="stat"><b>${pct('distraction')}%</b><span>Distraction time</span></div>
+    </div>
+    <div class="card"><h3>When you switch most</h3>
+      <div style="font-size:13px;color:var(--muted)">${worst?`Most switching around <b style="color:var(--gold)">${hr12(worst[1])}</b>, about ${Math.round(worst[0])} switches per active hour.`:'Not enough data yet.'} Gold bars are your three most scattered hours.</div>
+      <div class="hours">${bars.join('')}</div><div class="hlab">${labs.join('')}</div></div>
+    <div class="card" style="margin-top:14px"><h3>Your days, 6 AM to midnight</h3>${strips}
+      <div class="legend" style="grid-template-columns:repeat(4,auto);justify-content:start;gap:6px 18px">${CATS.map(c=>`<span style="--c:${CATCOL[c]}">${CATNAME[c]} ${pct(c)}%</span>`).join('')}</div></div>
+    <div class="card" style="margin-top:14px"><h3>Where your time went</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Tap a category to change it. Your choice sticks.</div>
+      ${top.map(([l,t])=>`<div class="tl2"><span>${l.replace(/</g,'&lt;')}</span><span>${hm(t)}</span><span style="color:var(--muted)">${Math.round(100*t/a.active)}%</span><span><button class="chip" data-l="${encodeURIComponent(l)}" style="color:${CATCOL[catOf(l)]}">${CATNAME[catOf(l)]}</button></span></div>`).join('')}
+    </div>`;
+  $('compBody').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const l=decodeURIComponent(b.dataset.l),o=store.get('focaude_cats',{});
+    o[l]=CATS[(CATS.indexOf(catOf(l))+1)%CATS.length];store.set('focaude_cats',o);renderComp()});
+}
+/* daily summaries (no window titles) go to the private data repo for the weekly coach */
+async function uploadCompSummaries(rows){
+  if(!tok())return;const done=store.get('focaude_compup',{}),today=new Date().toDateString();
+  const byDay={};for(const r of rows){const k=new Date(r[0]*1000);const key=k.getFullYear()+'-'+String(k.getMonth()+1).padStart(2,'0')+'-'+String(k.getDate()).padStart(2,'0');(byDay[key]=byDay[key]||[]).push(r)}
+  for(const [day,rs] of Object.entries(byDay)){
+    if(done[day]||new Date(day+'T12:00').toDateString()===today||rs.length<5)continue;
+    const a=compAnalyse(rs);const sum={date:day,activeMin:Math.round(a.active/60),switches:a.sw,rapid:a.rapid,perHour:+a.perHr.toFixed(1),medianDwellSec:Math.round(a.median),
+      longestMin:Math.round((a.longest.d||0)/60),longestLabel:a.longest.label||null,catMin:Object.fromEntries(CATS.map(c=>[c,Math.round(a.cat[c]/60)])),
+      top:Object.entries(a.tot).sort((x,y)=>y[1]-x[1]).slice(0,10).map(([l,t])=>[l,Math.round(t/60),catOf(l)]),
+      hourly:Object.fromEntries(a.hourAct.map((t,h)=>[h,[Math.round(t/60),a.hourSw[h]]]).filter(x=>x[1][0]>0))};
+    try{const ex=await gh('computer/'+day+'.json');
+      await gh('computer/'+day+'.json',{method:'PUT',body:JSON.stringify({message:'computer '+day,content:b64e(JSON.stringify(sum)),...(ex?{sha:ex.sha}:{})})});
+      done[day]=1;store.set('focaude_compup',done)}catch(e){rlog('compup '+e.message);break}}
+}
+/* tell the watcher whether to keep window titles */
+async function pushWatchCfg(){try{await fetch('http://127.0.0.1:47321/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({titles:$('setTitles').value==='1'})})}catch(e){}}
+$('setTitles').addEventListener('change',pushWatchCfg);pushWatchCfg();
+const _sv=showView;showView=function(id){_sv(id);if(id==='vComp')loadComp()};
+setTimeout(()=>{fetch('http://127.0.0.1:47321/activity?days=14',{cache:'no-store'}).then(r=>r.json()).then(d=>uploadCompSummaries(d.rows)).catch(()=>{})},8000);
 </script></body></html>
