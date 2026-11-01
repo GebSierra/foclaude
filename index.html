@@ -186,6 +186,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <p class="tintro">Rest your eyes on the orb. Breathe evenly through your nose. When your focus depth holds above 80, the droplets dissolve and the rain turns into a fire.</p>
     <div class="durs tl6" id="tDurs"><button data-m="2">2</button><button data-m="4" class="on">4</button><button data-m="6">6</button><button data-m="8">8</button><button data-m="10">10</button><button data-m="12">12</button></div>
     <div class="sub">minutes · use headphones for the soundscape</div>
+    <div class="field" style="width:min(420px,90vw)"><span>Audio breath cues<br><small style="color:var(--muted)">Beeps so you can close your eyes</small></span><select id="tBeeps"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+    <div class="field" style="width:min(420px,90vw)"><span>Guide until flow<br><small style="color:var(--muted)">Guidance fades once you hold flow for 30 s, returns if you drop</small></span><select id="tUntil"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field" style="width:min(420px,90vw)"><span>Breath pacer</span><select id="tPacer"><option value="0">Off</option><option value="a6" selected>Adaptive, guide to 6/min</option><option value="a5.5">Adaptive, guide to 5.5/min</option><option value="a4.5">Adaptive, guide to 4.5/min</option><option value="6">Fixed 6/min</option><option value="5.5">Fixed 5.5/min</option><option value="p:sigh">Physiological sigh (2 in, long out)</option><option value="p:flow">Flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <button class="big" id="tStart" style="max-width:320px">Begin training</button>
     <div class="sub" style="margin-top:22px">Recovery</div>
@@ -591,7 +593,7 @@ const PATTERNS={
   flow:{name:'Flow breath',seg:[['Breathe in',3,0,1],['Hold',2,1,1],['Breathe out slowly',10,1,0]]}};
 function patternPhase(name,sec){
   const p=PATTERNS[name],cyc=p.seg.reduce((a,s)=>a+s[1],0);let t=((sec%cyc)+cyc)%cyc;
-  for(const [cue,d,a,b] of p.seg){if(t<d){const k=t/d,lvl=a+(b-a)*(.5-.5*Math.cos(Math.PI*k));return{cue,inhale:b>a,level:lvl}}t-=d}
+  let i=0;for(const [cue,d,a,b] of p.seg){if(t<d){const k=t/d,lvl=a+(b-a)*(.5-.5*Math.cos(Math.PI*k));return{cue,seg:i,kind:b>a?(a>0?'topup':'in'):b<a?'out':'hold',inhale:b>a,level:lvl}}t-=d;i++}
   return{cue:'',inhale:false,level:0}}
 const patternRate=name=>+(60/PATTERNS[name].seg.reduce((a,s)=>a+s[1],0)).toFixed(1);
 const RITUAL={on:false,start:0,inF:.5,bpm:5.5,ph:0,last:0,tick:null,pattern:null,t0:0,reset:false};
@@ -761,7 +763,7 @@ function renderSummary(r){
     ${r.overtime?`<p style="color:var(--flow)">The timer waited ${fmt(r.overtime)} because you were in flow.</p>`:''}
     ${(()=>{const j=store.get('focaude_journal',[]);const pr=j.find(y=>y.type==='recovery'&&y.end<=r.start&&r.start-y.end<3600e3);return r.type==='work'&&pr?`<p style="color:var(--calm)">Started ${Math.round((r.start-pr.end)/60000)} min after ${REC[pr.kind].name.toLowerCase()} recovery.</p>`:''})()}
     ${r.type==='work'&&st.dur>=3600&&Date.now()-r.end<3*3600e3?`<div class="card" style="background:var(--panel2);margin:10px 0"><b>Recover before the next one.</b> You worked ${Math.round(st.dur/60)} min. Recovery is the hardest phase of the flow cycle, and it sets up the next one.
-      <div class="row">${Object.keys(REC).map(k=>`<button class="ghost" onclick="startTraining({recovery:'${k}'})">${REC[k].name} · ${REC[k].min} min</button>`).join('')}</div></div>`:''}${r.type==='training'?`<p style="color:var(--gold)">Training: best clearance ${r.maxClear}% · ${r.secAbove80} s above depth 80${r.pacer?` · breathing ${r.pacer.startBr??'–'} → ${r.pacer.endBr??'–'}/min (${r.pacer.pattern?PATTERNS[r.pacer.pattern].name+',':'pacer ended at'} ${r.pacer.endPace?.toFixed?r.pacer.endPace.toFixed(1):'–'}${r.pacer.sync!=null?', in sync '+r.pacer.sync+'%':''}, followed ${r.pacer.followPct??'–'}%)`:''}</p>`:''}
+      <div class="row">${Object.keys(REC).map(k=>`<button class="ghost" onclick="startTraining({recovery:'${k}'})">${REC[k].name} · ${REC[k].min} min</button>`).join('')}</div></div>`:''}${r.type==='training'?`<p style="color:var(--gold)">Training: best clearance ${r.maxClear}% · ${r.secAbove80} s above depth 80${r.flowAt!=null?' · reached flow at '+fmt(r.flowAt):''}${r.pacer?` · breathing ${r.pacer.startBr??'–'} → ${r.pacer.endBr??'–'}/min (${r.pacer.pattern?PATTERNS[r.pacer.pattern].name+',':'pacer ended at'} ${r.pacer.endPace?.toFixed?r.pacer.endPace.toFixed(1):'–'}${r.pacer.sync!=null?', in sync '+r.pacer.sync+'%':''}, followed ${r.pacer.followPct??'–'}%)`:''}</p>`:''}
     <div class="stats">
       <div class="stat"><b>${st.depth??'–'}</b><span>Average depth</span></div>
       <div class="stat"><b>${st.focusPct}%</b><span>Focused or flow</span></div>
@@ -919,7 +921,8 @@ const scene=(()=>{
     const room=x.createRadialGradient(W/2,H*.95,0,W/2,H*.95,H*1.1);
     room.addColorStop(0,`rgba(232,149,31,${.28*cl})`);room.addColorStop(1,'rgba(232,149,31,0)');x.fillStyle=room;x.fillRect(0,0,W,H);
     // breathing orb
-    const ph=train.pacer?pacerPhase(ts):null;
+    const ph=train.pacer&&!train.guideOff?pacerPhase(ts):null;
+    if(ph)breathCue(ph);
     const base=Math.min(W,H)*.13,live=BR.live();
     const R=base*(live?(.78+.42*BR.smooth()):ph?(.78+.42*ph.level):(1+.04*Math.sin(t*2*Math.PI/5.5))),[a,b,d]=col.map(Math.round);
     if(ph&&live){const rr=base*(.78+.42*ph.level)*1.55;x.strokeStyle='rgba(233,189,98,.55)';x.lineWidth=2*devicePixelRatio;x.beginPath();x.arc(W/2,H/2,rr,0,7);x.stroke()}
@@ -967,6 +970,7 @@ function startTraining(opt={}){
 function trainSample(d,t){
   train.samples.push([Math.round((t-train.start)/1000),d.currentState,d.focusLevel,d.calm,d.signal,d.br==null?null:Math.round(d.br*10),d.wave??null]);
   if(train.pacer)adaptPacer(d);
+  if(train.pacer&&!train.recovery)flowGate(d);
   const ok=VALID(d.currentState);
   if(train.recovery){}else if(ok&&d.focusLevel>=80){train.clear=Math.min(1,train.clear+1/45);train.above++}   // ~45 s above 80 clears the screen
   else if(!ok||d.focusLevel<65||d.currentState===4)train.clear=Math.max(0,train.clear-1/90);
@@ -984,7 +988,7 @@ function endTraining(full){
   if(s.recovery){const rec={id:s.start,type:'recovery',kind:s.recovery,start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:[],note:'',rating:null};
     rec.stats=stats(rec);const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);showView('vJournal');renderJournal(rec.id);return}
   const rec={id:s.start,type:'training',start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:s.marks,note:'',rating:null,
-    maxClear:Math.round(s.maxClear*100),secAbove80:s.above,
+    maxClear:Math.round(s.maxClear*100),secAbove80:s.above,flowAt:s.flowAt??null,
     pacer:s.pacer?{pattern:s.pattern||null,sync:s.syncLog&&s.syncLog.length?Math.round(s.syncLog.reduce((a,b)=>a+b,0)/s.syncLog.length):null,adaptive:s.adaptive,target:s.target,endPace:s.pace,startBr:s.brs[0]??null,endBr:s.brs.length?+(s.brs.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,s.brs.length)).toFixed(1):null,followPct:s.follow+s.miss?Math.round(100*s.follow/(s.follow+s.miss)):null}:null};
   rec.stats=stats(rec);
   const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
@@ -1437,4 +1441,36 @@ async function pushWatchCfg(){try{await fetch('http://127.0.0.1:47321/config',{m
 $('setTitles').addEventListener('change',pushWatchCfg);pushWatchCfg();
 const _sv=showView;showView=function(id){_sv(id);if(id==='vComp')loadComp()};
 setTimeout(()=>{fetch('http://127.0.0.1:47321/activity?days=14',{cache:'no-store'}).then(r=>r.json()).then(d=>uploadCompSummaries(d.rows)).catch(()=>{})},8000);
+
+
+/* =========================================================
+   AUDIO BREATH CUES + GUIDE UNTIL FLOW (as the original's focus training did)
+   two short high beeps = breathe in twice; one low tone = breathe out
+   ========================================================= */
+function tone(f,dur,vol=.12,at=0){try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();const t0=actx.currentTime+at,o=actx.createOscillator(),g=actx.createGain();
+  o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+  o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+dur+.05)}catch(e){}}
+function breathCue(ph){
+  const key=(ph.kind||(ph.inhale?'in':'out'))+':'+(ph.seg??'');
+  if(train.lastCueKey===key)return;train.lastCueKey=key;
+  if($('tBeeps').value!=='1')return;
+  const k=ph.kind||(ph.inhale?'in':'out');
+  if(k==='in')tone(880,.14);
+  else if(k==='topup')tone(988,.12);
+  else if(k==='out')tone(440,.5,.1);
+}
+function flowGate(d){
+  if($('tUntil').value!=='1')return;
+  const now=Date.now(),deep=VALID(d.currentState)&&(d.currentState===10||d.focusLevel>=80),low=!VALID(d.currentState)||d.focusLevel<65||d.currentState===4;
+  if(!train.guideOff){
+    train.deepSince=deep?(train.deepSince||now):0;
+    if(train.deepSince&&now-train.deepSince>=30000){
+      train.guideOff=true;train.lowSince=0;train.flowAt=train.flowAt??Math.round((now-train.start)/1000);
+      $('tCue').textContent="You're in flow. Breathe naturally.";tone(660,.25,.08);tone(880,.4,.08,.25)}
+  }else{
+    train.lowSince=low?(train.lowSince||now):0;
+    if(train.lowSince&&now-train.lowSince>=30000){train.guideOff=false;train.deepSince=0;train.lastCueKey=null;$('tCue').textContent='Back to the breath'}
+  }
+}
+['tBeeps','tUntil'].forEach(k=>{const el=$(k),v=store.get('focaude_set_'+k,null);if(v!==null)el.value=v;el.onchange=()=>store.set('focaude_set_'+k,el.value)});
 </script></body></html>
