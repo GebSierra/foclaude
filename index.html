@@ -118,6 +118,9 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 .askwrap{position:fixed;inset:0;background:rgba(5,6,8,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:6;padding:16px}
 .askwrap[hidden]{display:none}
 .askcard{max-width:380px;width:100%}
+.resumeShow{margin:-4px 0 12px;padding:9px 12px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;font-size:13px;color:var(--text);background:var(--panel2)}
+.resumeShow b{color:var(--gold);font-weight:500}.resumeShow span{color:var(--muted)}
+.rsin{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:9px 10px;font:inherit;margin:0 0 12px}
 .comp{margin-top:28px}
 .hours{display:flex;align-items:flex-end;gap:4px;height:150px;margin:10px 0 4px}
 .hours div{flex:1;background:var(--panel2);border-radius:5px 5px 0 0;position:relative;min-height:2px}
@@ -160,6 +163,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
       <h3>Work session</h3>
       <div class="clock" id="clock">25:00</div>
       <div class="sub" id="clockSub">Pick a length, then start.</div>
+      <div class="resumeShow" id="resumeShow" hidden></div>
       <div class="durs" id="durs"><button data-m="25" class="on">25</button><button data-m="50">50</button><button data-m="90">90</button><button data-m="0">∞</button><button data-m="c" id="durCustom">Custom</button></div>
       <div class="row" id="customRow" hidden style="margin:-4px 0 12px;align-items:center"><input id="customMin" type="number" min="1" max="300" value="40" style="width:90px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit"><span style="color:var(--muted);font-size:13px">minutes</span></div>
       <label class="field" style="border:0;padding:0 0 8px;cursor:pointer"><span style="font-size:13px;color:var(--muted)" id="daLabel">Distraction alerts</span><span class="sw"><input type="checkbox" id="daOn" checked><i></i></span></label>
@@ -170,6 +174,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
         <div class="sub" style="margin:12px 0 6px">Tell it how you really are</div>
         <div class="mk"><button data-l="focused">Focused <kbd>F</kbd></button><button data-l="drifted">Drifted <kbd>D</kbd></button><button data-l="tired">Tired <kbd>T</kbd></button></div>
         <div class="sub" id="markCount" style="margin:6px 0 0;font-size:12px"></div>
+        <button class="ghost" id="resumeBtn" style="margin-top:10px;width:100%;font-size:13px">Interrupted? Leave a resume note <kbd>R</kbd></button>
       </div>
     </div>
     <div class="card">
@@ -266,6 +271,15 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
   <p style="margin:0 0 14px">Connect your FOCI clip so this session records your focus?</p>
   <div class="row"><button class="big" id="askConnect" style="flex:1">Connect clip</button></div>
   <div class="row"><button class="ghost" id="askSkip" style="flex:1">Start without clip</button><button class="ghost" id="askCancel">Cancel</button></div>
+</div></div>
+<div class="askwrap" id="resume" hidden><div class="card askcard">
+  <h3>Ready to resume</h3>
+  <p style="margin:0 0 12px;color:var(--muted);font-size:13px">Ten seconds now saves the warm-up later. It also helps your mind let go of this task.</p>
+  <label style="font-size:12px;color:var(--muted)">Where I stopped</label>
+  <input class="rsin" id="rsWhere" maxlength="160" placeholder="e.g. Halfway through the second point, verse 12">
+  <label style="font-size:12px;color:var(--muted)">My next step</label>
+  <input class="rsin" id="rsNext" maxlength="160" placeholder="e.g. Write the illustration for point two">
+  <div class="row"><button class="big" id="rsSave" style="flex:1">Save note</button><button class="ghost" id="rsSkip">Skip</button></div>
 </div></div>
 <script>
 /* ===== protocol layer (tested) ===== */
@@ -635,10 +649,11 @@ function startSession(){
   $('startBtn').textContent='End session';$('startBtn').classList.add('stop');
   $('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';
   if($('wsSound').checked){session.sound=true;session.mixC=0;sound.start();sound.mix(0,0)}
-  session.tick=setInterval(tickSession,1000);tickSession();
+  session.tick=setInterval(tickSession,1000);tickSession();paintResume();
   syncClip();
 }
 
+const GLOBE={n:3,win:15*60000};   // 3 distraction alerts within 15 minutes
 const inStruggle=()=>session&&(Date.now()-session.start)/1000<(+$('setStruggle').value||0)*60;
 const inDeep=()=>VALID(NOW.state)&&Date.now()-NOW.t<5000&&(FOCUSED(NOW.state)||NOW.focus>=75);
 function tickSession(){
@@ -653,7 +668,7 @@ function tickSession(){
   $('clock').textContent=session.plan?fmt(session.plan-el):fmt(el);
   const sl=(+$('setStruggle').value||0)*60-el;
   if(sl>0)$('clockSub').textContent='Struggle phase · '+fmt(sl)+'. Normal. Stay with it.';
-  else if(!session.struggleDone){session.struggleDone=true;$('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';syncClip()}
+  else if(!session.struggleDone){session.struggleDone=true;paintResume();$('clockSub').textContent=LIVE.connected?'Recording. Work on one thing.':'Clip not connected. Timer only.';syncClip()}
   const v=session.samples.filter(x=>VALID(x[1]));
   $('mFocusPct').textContent=v.length?Math.round(100*v.filter(x=>FOCUSED(x[1])).length/v.length)+'%':'–';
   if(session.plan&&el>=session.plan){
@@ -670,7 +685,12 @@ function sessionSample(d,t){
   session.fatigueSince=s===9?(session.fatigueSince||t):0;
   if(t-session.lastAlert<90000)return;                       // one alert per 90 s at most
   if(!distractMuted()&&session.distractSince&&t-session.distractSince>=dSec*1000){
-    session.lastAlert=t;session.alerts++;notify('Drifting','You have been distracted for '+dSec+' s. Come back to the one thing.','distract');
+    session.lastAlert=t;session.alerts++;
+    session.dTimes=(session.dTimes||[]).filter(x=>t-x<GLOBE.win);session.dTimes.push(t);
+    if(session.dTimes.length>=GLOBE.n&&!(session.globeAt&&t-session.globeAt<GLOBE.win)){   // lots of drifting: settle first, don't just push back in
+      session.globeAt=t;addMark('globe');
+      notify('Let the snow globe settle',session.dTimes.length+' drifts in 15 minutes. Don\'t jump straight back in. Hands off the keys, one slow sigh, eyes off the screen. Then name your next small step.','globe');
+    }else notify('Drifting','You have been distracted for '+dSec+' s. Come back to the one thing.','distract');
   }else if(!inStruggle()&&session.fatigueSince&&t-session.fatigueSince>=fSec*1000){
     session.lastAlert=t;notify('Fatigue','Your breathing shows fatigue. Take a 5 minute break.','fatigue');
   }
@@ -685,17 +705,35 @@ function endSession(){
   const rec={id:s.start,type:'work',start:s.start,end:Date.now(),plan:s.plan,alerts:s.alerts,samples:s.samples,marks:s.marks,note:'',rating:null,
     overtime:s.plan&&s.held?Math.round((Date.now()-s.start)/1000-s.plan):0,wins:s.wins};
   if((rec.end-rec.start)<60000&&!rec.samples.length)return;     // ignore accidental starts
-  rec.stats=stats(rec);
+  rec.stats=stats(rec);if(s.resume)rec.resume=s.resume;
   const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
   showView('vJournal');renderJournal(rec.id);
+  openResume(rec.resume,n=>{const j=store.get('focaude_journal',[]);const x=j.find(y=>y.id===rec.id);if(x){x.resume=n;store.set('focaude_journal',j)}renderJournal(rec.id);paintResume()});
 }
+/* ready-to-resume note (Leroy 2018): one line on where you stopped and the next step */
+function lastResume(){const r=store.get('focaude_journal',[]).find(x=>x.resume&&(x.resume.next||x.resume.where));return r?r.resume:null}
+function paintResume(){const r=lastResume(),el=$('resumeShow');
+  const show=!!r&&(!session||inStruggle());el.hidden=!show;if(!show)return;
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  el.innerHTML='<b>Pick up here:</b> '+esc(r.next||r.where)+(r.next&&r.where?'<br><span>Stopped at: '+esc(r.where)+'</span>':'')}
+let RS_OPEN=false;
+function openResume(prev,save){
+  if(RS_OPEN)return;RS_OPEN=true;const m=$('resume');m.hidden=false;
+  $('rsWhere').value=prev?.where||'';$('rsNext').value=prev?.next||'';setTimeout(()=>$('rsWhere').focus(),50);
+  const close=()=>{m.hidden=true;RS_OPEN=false};
+  $('rsSave').onclick=()=>{const n={where:$('rsWhere').value.trim(),next:$('rsNext').value.trim(),t:Date.now()};close();if(n.where||n.next)save(n)};
+  $('rsSkip').onclick=close;
+  m.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('rsSave').click()}if(e.key==='Escape')close()};
+}
+function midResume(){if(!session)return;openResume(session.resume,n=>{if(!session)return;session.resume=n;addMark('resume_note')})}
+$('resumeBtn').onclick=midResume;
 
 /* ---- alerts ---- */
 let actx=null;
 function chime(kind){
   if((kind==='ritual'||kind==='done'||kind==='flow')?$('setChimes').value!=='1':$('setSound').value!=='1')return;
   try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();
-    const notes=kind==='flow'?[523,659]:kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
+    const notes=kind==='globe'?[523,392]:kind==='flow'?[523,659]:kind==='ritual'?[392,523]:kind==='distract'?[660,523]:kind==='fatigue'?[440,392,349]:[523,659,784];
     notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain(),t0=actx.currentTime+i*.28;
       o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(V(.09),t0+.06);g.gain.exponentialRampToValueAtTime(.0001,t0+1.6);
       o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+1.5)})}catch(e){}
@@ -713,15 +751,16 @@ function addMark(label){const tgt=session||train;if(!tgt)return;const t=Math.rou
   const b=document.querySelector(`.mk button[data-l=${label}]`);if(b){b.classList.add('flash');setTimeout(()=>b.classList.remove('flash'),500)}}
 $('marks').onclick=e=>{const b=e.target.closest('button');if(b)addMark(b.dataset.l)};
 document.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select'))return;if(e.key==='Escape'&&train)endTraining(false);
-  if(e.key==='f'||e.key==='F')addMark('focused');if(e.key==='d'||e.key==='D')addMark('drifted');if(e.key==='t'||e.key==='T')addMark('tired')});
+  if(e.key==='f'||e.key==='F')addMark('focused');if(e.key==='d'||e.key==='D')addMark('drifted');if(e.key==='t'||e.key==='T')addMark('tired');if((e.key==='r'||e.key==='R')&&session)midResume()});
 function notify(title,body,kind){
-  chime(kind);const a=$('alert');a.innerHTML='<b>'+title+'.</b> '+body+(kind==='distract'?' <button data-a="alert_right">Right, I drifted</button><button data-a="alert_tired">Trying, but tired</button><button data-a="alert_wrong">Wrong, I was focused</button><button data-a="snooze">Snooze 10 min</button><button data-a="sigh">30 s sigh reset</button>':'');
+  chime(kind);const a=$('alert');a.innerHTML='<b>'+title+'.</b> '+body+(kind==='distract'?' <button data-a="alert_right">Right, I drifted</button><button data-a="alert_tired">Trying, but tired</button><button data-a="alert_wrong">Wrong, I was focused</button><button data-a="snooze">Snooze 10 min</button><button data-a="sigh">30 s sigh reset</button>':kind==='globe'?' <button data-a="sigh">Settle for 30 s</button><button data-a="globe_skip">Not now</button>':'');
   a.onclick=e=>{const b=e.target.closest('button');if(!b)return;a.classList.remove('show');
+    if(b.dataset.a==='globe_skip')return;
     if(b.dataset.a==='snooze'){snoozeDistract(10);return}
     if(b.dataset.a==='sigh'){startReset();return}
     addMark(b.dataset.a);
     if(b.dataset.a==='alert_tired'&&session){session.tiredMarks=(session.tiredMarks||0)+1;
-      setTimeout(()=>{a.innerHTML=session.tiredMarks>=2?'<b>Noted.</b> Tired twice now. A 5 minute break will likely buy you more than pushing through.':'<b>Noted.</b> Tired, not distracted. Slow your out-breath for a minute.';a.onclick=null;a.classList.add('show');setTimeout(()=>a.classList.remove('show'),6000)},450)}};a.classList.add('show');setTimeout(()=>a.classList.remove('show'),7000);
+      setTimeout(()=>{a.innerHTML=session.tiredMarks>=2?'<b>Noted.</b> Tired twice now. A 5 minute break will likely buy you more than pushing through.':'<b>Noted.</b> Tired, not distracted. Slow your out-breath for a minute.';a.onclick=null;a.classList.add('show');setTimeout(()=>a.classList.remove('show'),6000)},450)}};a.classList.add('show');clearTimeout(notify.hide);notify.hide=setTimeout(()=>a.classList.remove('show'),kind==='globe'?20000:7000);
   try{if(document.hidden&&Notification.permission==='granted')new Notification('Focaude: '+title,{body})}catch(e){}
 }
 $('notifBtn').onclick=async()=>{try{const p=await Notification.requestPermission();$('notifBtn').textContent=p==='granted'?'Allowed':'Blocked'}catch(e){}};
@@ -787,6 +826,7 @@ function renderSummary(r){
     <h3 style="margin:18px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500">How deep was it really?</h3>
     <div class="rate" id="rate">${[1,2,3,4,5].map(n=>`<button data-n="${n}" class="${r.rating===n?'on':''}">${n}</button>`).join('')}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:4px">1 = scattered, 5 = lost in the work. Your rating trains the personal model.</div>
+    ${r.resume?`<h3 style="margin:18px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500">Ready to resume</h3><div class="resumeShow" style="margin:0">${r.resume.next?'<b>Next:</b> '+r.resume.next.replace(/</g,'&lt;'):''}${r.resume.where?(r.resume.next?'<br>':'')+'<span>Stopped at: '+r.resume.where.replace(/</g,'&lt;')+'</span>':''}</div>`:''}
     <h3 style="margin:18px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500">Journal note</h3>
     <textarea id="note" placeholder="What were you working on? What pulled you away?">${(r.note||'').replace(/</g,'&lt;')}</textarea>
     <div class="row"><button class="ghost" id="delBtn">Delete session</button></div>`;
@@ -1563,4 +1603,5 @@ function setVolume(v){VOL=Math.max(0,Math.min(1,v));try{localStorage.setItem('fo
   document.querySelectorAll('.volPct').forEach(s=>s.textContent=Math.round(VOL*100)+'%');
   try{synth.setVol()}catch(e){}}
 document.querySelectorAll('.volSlider').forEach(s=>{s.value=Math.round(VOL*100);s.oninput=e=>setVolume(e.target.value/100)});setVolume(VOL);
+try{paintResume()}catch(e){}
 </script></body></html>
