@@ -215,7 +215,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="sub">minutes · use headphones for the soundscape</div>
     <div class="field" style="width:min(420px,90vw)"><span>Breath cue sounds</span><select id="tBeeps"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field" style="width:min(420px,90vw)"><span>Guide until flow<br><small style="color:var(--muted)">Guidance fades once you hold flow for 30 s, returns if you drop</small></span><select id="tUntil"><option value="1" selected>On</option><option value="0">Off</option></select></div>
-    <div class="field" style="width:min(420px,90vw)"><span>Breath pacer</span><select id="tPacer"><option value="0">Off</option><option value="smart">Smart (learns you)</option><option value="a6" selected>Adaptive, guide to 6/min</option><option value="a5.5">Adaptive, guide to 5.5/min</option><option value="a4.5">Adaptive, guide to 4.5/min</option><option value="6">Fixed 6/min</option><option value="5.5">Fixed 5.5/min</option><option value="p:sigh">Quick sigh (2 quick in, pause, sigh out)</option><option value="p:flow">Flow breath (3 in, 2 hold, 10 out)</option></select></div>
+    <div class="field" style="width:min(420px,90vw)"><span>Breath pacer</span><select id="tPacer"><option value="0">Off</option><option value="smart">Smart (learns you)</option><option value="a6" selected>Adaptive, guide to 6/min</option><option value="a5.5">Adaptive, guide to 5.5/min</option><option value="a4.5">Adaptive, guide to 4.5/min</option><option value="6">Fixed 6/min</option><option value="5.5">Fixed 5.5/min</option><option value="p:sigh">Physiological sigh (2 in, long out)</option><option value="p:flow">Flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <div id="smartInfo" class="sub" style="max-width:520px"></div>
     <button class="big" id="tStart" style="max-width:320px">Begin training</button>
     <div class="sub" style="margin-top:22px">Recovery</div>
@@ -250,7 +250,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="field"><span>Distraction alert after (seconds)</span><input id="setDistract" type="number" min="5" max="600" value="30"></div>
     <div class="field"><span>Fatigue alert after (seconds)</span><input id="setFatigue" type="number" min="10" max="900" value="60"></div>
     <div class="field"><span>Struggle phase (minutes)<br><small style="color:var(--muted)">Distraction buzz stays on. Fatigue and stress alerts wait.</small></span><input id="setStruggle" type="number" min="0" max="60" value="15"></div>
-    <div class="field"><span>Pre-session breath ritual</span><select id="setRitual"><option value="0">Off</option><option value="bal" selected>1 min, balanced (equal in and out)</option><option value="calm">1 min, calming (longer out-breath)</option><option value="sigh">1 min, quick sigh (2 quick in through the nose, a pause, then sigh out)</option><option value="flow">1 min, flow breath (3 in, 2 hold, 10 out)</option></select></div>
+    <div class="field"><span>Pre-session breath ritual</span><select id="setRitual"><option value="0">Off</option><option value="bal" selected>1 min, balanced (equal in and out)</option><option value="calm">1 min, calming (longer out-breath)</option><option value="sigh">1 min, physiological sigh (2 in through the nose, long out through the mouth)</option><option value="flow">1 min, flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <div class="field"><span>Don't end a session while I'm in deep focus</span><select id="setHold"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field"><span>Volume <span class="volPct"></span><br><small style="color:var(--muted)">Everything: soundscape, breath cues, chimes, alerts</small></span><input type="range" class="volSlider" min="0" max="100" step="1" style="width:200px"></div>
     <div class="field"><span>Breath cue sounds<br><small style="color:var(--muted)">Soft tones that pace your breathing (rituals, training, recovery)</small></span><select id="setCues"><option value="1" selected>On</option><option value="0">Off</option></select></div>
@@ -656,7 +656,7 @@ function askClip(go){
 /* one-minute pre-flow breath ritual: the orb paces your breathing, then the session starts on its own */
 /* named breath patterns: [cue, seconds, lung level from, to]  (0 = empty, 1 = full) */
 const PATTERNS={
-  sigh:{name:'Quick sigh',seg:[['In through the nose',.2,0,.6],['In again',.2,.6,1],['Pause',.45,1,1],['Sigh out',.65,1,0],['Rest',.3,0,0]]},   // 1.8 s cycle measured from Geb's recording (Nov 2): tap, tap 0.18 s later, pause, sigh out about 0.6 s, short rest
+  sigh:{name:'Physiological sigh',seg:[['In through the nose',.22,0,.6],['In again',.22,.6,1],['Pause',.5,1,1],['Sigh out',.72,1,0],['Rest',.34,0,0]]},   // 2.0 s cycle: Geb's recording (Nov 2) slowed about 10%: in, in 0.2 s apart, pause, sigh out, rest
   flow:{name:'Flow breath',seg:[['Breathe in',3,0,1],['Hold',2,1,1],['Breathe out slowly',10,1,0]]}};
 function patternPhase(name,sec){
   const p=PATTERNS[name],cyc=p.seg.reduce((a,s)=>a+s[1],0);let t=((sec%cyc)+cyc)%cyc;
@@ -1089,7 +1089,7 @@ function endTraining(full){
   if(s.recovery){const rec={id:s.start,type:'recovery',kind:s.recovery,start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:[],note:'',rating:null};
     rec.stats=stats(rec);const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);showView('vJournal');renderJournal(rec.id);return}
   const rec={id:s.start,type:'training',start:s.start,end:Date.now(),plan:s.plan,alerts:0,samples:s.samples,marks:s.marks,note:'',rating:null,
-    maxClear:Math.round(s.maxClear*100),secAbove80:s.above,flowAt:s.flowAt??null,smart:s.smart?{stressed:!!s.smart.stressed,arm:s.smart.arm,baseBr:s.smart.baseBr,deepenAt:s.smart.deepenAt??null,timeToFlow:s.flowAt??null,usedSignature:!!s.smart.sig}:null,
+    maxClear:Math.round(s.maxClear*100),secAbove80:s.above,flowAt:s.flowAt??null,smart:s.smart?{stressed:!!s.smart.stressed,arm:s.smart.arm,firstArm:s.smart.firstArm||null,baseBr:s.smart.baseBr,deepenAt:s.smart.deepenAt??null,timeToFlow:s.flowAt??null,usedSignature:!!s.smart.sig}:null,
     pacer:s.pacer?{pattern:s.pattern||null,sync:s.syncLog&&s.syncLog.length?Math.round(s.syncLog.reduce((a,b)=>a+b,0)/s.syncLog.length):null,adaptive:s.adaptive,target:s.target,endPace:s.pace,startBr:s.brs[0]??null,endBr:s.brs.length?+(s.brs.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,s.brs.length)).toFixed(1):null,followPct:s.follow+s.miss?Math.round(100*s.follow/(s.follow+s.miss)):null}:null};
   rec.stats=stats(rec);
   const j=store.get('focaude_journal',[]);j.unshift(rec);store.set('focaude_journal',j);
@@ -1630,7 +1630,13 @@ function smartStart(){
 function smartStep(d){
   const S=train.smart,now=Date.now(),el=(now-S.t0)/1000;
   if(S.baseBr==null&&d.br!=null&&el>8)S.baseBr=d.br;
-  if(el<30&&(d.currentState===7||(d.br!=null&&d.br>=16)))S.stressed=true;
+  if(el<30&&(d.currentState===7||(S.arm!=='sigh'&&d.br!=null&&d.br>=16)))S.stressed=true;
+  // route by starting state: the quick sigh raises arousal (for a flat start), slow breathing lowers it (for a stressed start)
+  if(el<20&&VALID(d.currentState))(S.st=S.st||[]).push(d.currentState);
+  if(!S.routed&&el>=20){S.routed=true;const st=S.st||[],share=f=>st.length?st.filter(f).length/st.length:0;
+    const stressedStart=share(s=>s===7)>=.3,flat=!stressedStart&&share(s=>s===5||s===9||s===4)>=.5;
+    if(stressedStart&&S.arm!=='slow'){S.firstArm=S.arm;S.arm='slow';train.pattern=null;$('tCue').textContent='You seem stressed. Switching to slow breathing.'}
+    else if(flat&&S.arm==='slow'){S.firstArm=S.arm;S.arm='sigh';train.pattern='sigh';train.patT0=0;train.adaptive=false;$('tCue').textContent='You seem flat. Switching to the sigh to wake you up.'}}
   if(S.phase==='settle'){
     if(S.arm==='slow'&&S.baseBr!=null&&!train.adaptive){train.adaptive=true;train.target=Math.max(4.5,Math.min(7,+(S.baseBr*.6).toFixed(1)));train.pace=Math.min(14,+(S.baseBr*.9).toFixed(1));train.lastAdapt=now}
     const recent=BR.buf.slice(-12).map(p=>p[1]);if(recent.length>=8)S.amps.push(Math.max(...recent)-Math.min(...recent));
