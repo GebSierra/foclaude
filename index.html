@@ -656,7 +656,7 @@ function askClip(go){
 /* one-minute pre-flow breath ritual: the orb paces your breathing, then the session starts on its own */
 /* named breath patterns: [cue, seconds, lung level from, to]  (0 = empty, 1 = full) */
 const PATTERNS={
-  sigh:{name:'Physiological sigh',seg:[['Breathe in through your nose',2.2,0,.82],['Top up, one more sniff',.8,.82,1],['Long breath out through your mouth',6,1,0],['Rest',1,0,0]]},
+  sigh:{name:'Physiological sigh',seg:[['Breathe in through your nose',1.2,0,.8],['Top up, one more sniff',1,.8,1],['Long breath out through your mouth',4.4,1,0]]},   // 6.6 s cycle, from Geb's own rhythm (Nov 2 log)
   flow:{name:'Flow breath',seg:[['Breathe in',3,0,1],['Hold',2,1,1],['Breathe out slowly',10,1,0]]}};
 function patternPhase(name,sec){
   const p=PATTERNS[name],cyc=p.seg.reduce((a,s)=>a+s[1],0);let t=((sec%cyc)+cyc)%cyc;
@@ -1554,12 +1554,16 @@ function tone(f,dur,vol=.12,at=0){try{actx=actx||new(window.AudioContext||window
 function softCue(kind){
   if(!cuesOn())return;
   try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();const t0=actx.currentTime;
-    const spec=kind==='in'?[294,349,.9,.045]:kind==='topup'?[349,392,.35,.035]:kind==='out'?[349,262,1.4,.035]:null;if(!spec)return;
-    const [f0,f1,dur,vol]=spec,lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;lp.connect(actx.destination);
-    for(const [mul,v] of [[1,vol],[.5,vol*.6]]){const o=actx.createOscillator(),g=actx.createGain();o.type='sine';
+    // pitched high enough for phone speakers; each in-breath is its own short, soft tap, the out-breath a gentle falling tone
+    const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;lp.connect(actx.destination);
+    const tone=(f0,f1,dur,vol,att)=>{for(const [mul,v] of [[1,vol],[2,vol*.18]]){const o=actx.createOscillator(),gn=actx.createGain();o.type='sine';
       o.frequency.setValueAtTime(f0*mul,t0);o.frequency.linearRampToValueAtTime(f1*mul,t0+dur*.8);
-      g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(V(v),t0+.12);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
-      o.connect(g).connect(lp);o.start(t0);o.stop(t0+dur+.05)}}catch(e){}}
+      gn.gain.setValueAtTime(.0001,t0);gn.gain.exponentialRampToValueAtTime(V(v),t0+att);gn.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+      o.connect(gn).connect(lp);o.start(t0);o.stop(t0+dur+.05)}};
+    if(kind==='in')tone(659,659,.45,.11,.02);
+    else if(kind==='topup')tone(784,784,.4,.11,.02);
+    else if(kind==='out')tone(587,440,1.6,.08,.15);
+  }catch(e){}}
 function breathCue(ph){
   const key=(ph.kind||(ph.inhale?'in':'out'))+':'+(ph.seg??'');
   if(train.lastCueKey===key)return;train.lastCueKey=key;
