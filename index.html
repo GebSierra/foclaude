@@ -142,6 +142,16 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
 .volSlider{accent-color:#e9bd62;width:150px}
 .tvol{position:absolute;top:26px;left:24px;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;opacity:.6}.tvol:hover{opacity:1}
 @media (max-width:860px){.focus,.journal{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}nav button{padding:7px 10px}}
+@media (max-width:700px){
+  header{flex-wrap:wrap;gap:10px}
+  header .brand{margin-right:auto}
+  nav{order:3;flex:1 1 100%;margin-left:0;overflow-x:auto;scrollbar-width:none;justify-content:space-between}
+  nav::-webkit-scrollbar{display:none}
+  nav button{padding:7px 10px;font-size:13px;white-space:nowrap;flex:0 0 auto}
+  .conn{white-space:nowrap}
+  .thud{flex-wrap:wrap;justify-content:center;gap:4px 14px!important;padding:10px 12px calc(12px + env(safe-area-inset-bottom))!important;font-size:12px!important;background:rgba(8,9,12,.72);backdrop-filter:blur(6px);border-top:1px solid var(--line);bottom:0!important;left:0!important;right:0!important}
+  .thud span{white-space:nowrap}
+}
 </style>
 </head>
 <body>
