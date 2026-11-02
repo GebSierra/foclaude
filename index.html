@@ -215,7 +215,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="sub">minutes · use headphones for the soundscape</div>
     <div class="field" style="width:min(420px,90vw)"><span>Breath cue sounds</span><select id="tBeeps"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field" style="width:min(420px,90vw)"><span>Guide until flow<br><small style="color:var(--muted)">Guidance fades once you hold flow for 30 s, returns if you drop</small></span><select id="tUntil"><option value="1" selected>On</option><option value="0">Off</option></select></div>
-    <div class="field" style="width:min(420px,90vw)"><span>Breath pacer</span><select id="tPacer"><option value="0">Off</option><option value="smart">Smart (learns you)</option><option value="a6" selected>Adaptive, guide to 6/min</option><option value="a5.5">Adaptive, guide to 5.5/min</option><option value="a4.5">Adaptive, guide to 4.5/min</option><option value="6">Fixed 6/min</option><option value="5.5">Fixed 5.5/min</option><option value="p:sigh">Quick sigh (2 quick in, 1 out, about 2 s a cycle)</option><option value="p:flow">Flow breath (3 in, 2 hold, 10 out)</option></select></div>
+    <div class="field" style="width:min(420px,90vw)"><span>Breath pacer</span><select id="tPacer"><option value="0">Off</option><option value="smart">Smart (learns you)</option><option value="a6" selected>Adaptive, guide to 6/min</option><option value="a5.5">Adaptive, guide to 5.5/min</option><option value="a4.5">Adaptive, guide to 4.5/min</option><option value="6">Fixed 6/min</option><option value="5.5">Fixed 5.5/min</option><option value="p:sigh">Quick sigh (2 quick in, pause, sigh out)</option><option value="p:flow">Flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <div id="smartInfo" class="sub" style="max-width:520px"></div>
     <button class="big" id="tStart" style="max-width:320px">Begin training</button>
     <div class="sub" style="margin-top:22px">Recovery</div>
@@ -250,7 +250,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:
     <div class="field"><span>Distraction alert after (seconds)</span><input id="setDistract" type="number" min="5" max="600" value="30"></div>
     <div class="field"><span>Fatigue alert after (seconds)</span><input id="setFatigue" type="number" min="10" max="900" value="60"></div>
     <div class="field"><span>Struggle phase (minutes)<br><small style="color:var(--muted)">Distraction buzz stays on. Fatigue and stress alerts wait.</small></span><input id="setStruggle" type="number" min="0" max="60" value="15"></div>
-    <div class="field"><span>Pre-session breath ritual</span><select id="setRitual"><option value="0">Off</option><option value="bal" selected>1 min, balanced (equal in and out)</option><option value="calm">1 min, calming (longer out-breath)</option><option value="sigh">1 min, quick sigh (2 quick in through the nose, 1 out, about 2 seconds a cycle)</option><option value="flow">1 min, flow breath (3 in, 2 hold, 10 out)</option></select></div>
+    <div class="field"><span>Pre-session breath ritual</span><select id="setRitual"><option value="0">Off</option><option value="bal" selected>1 min, balanced (equal in and out)</option><option value="calm">1 min, calming (longer out-breath)</option><option value="sigh">1 min, quick sigh (2 quick in through the nose, a pause, then sigh out)</option><option value="flow">1 min, flow breath (3 in, 2 hold, 10 out)</option></select></div>
     <div class="field"><span>Don't end a session while I'm in deep focus</span><select id="setHold"><option value="1" selected>On</option><option value="0">Off</option></select></div>
     <div class="field"><span>Volume <span class="volPct"></span><br><small style="color:var(--muted)">Everything: soundscape, breath cues, chimes, alerts</small></span><input type="range" class="volSlider" min="0" max="100" step="1" style="width:200px"></div>
     <div class="field"><span>Breath cue sounds<br><small style="color:var(--muted)">Soft tones that pace your breathing (rituals, training, recovery)</small></span><select id="setCues"><option value="1" selected>On</option><option value="0">Off</option></select></div>
@@ -656,7 +656,7 @@ function askClip(go){
 /* one-minute pre-flow breath ritual: the orb paces your breathing, then the session starts on its own */
 /* named breath patterns: [cue, seconds, lung level from, to]  (0 = empty, 1 = full) */
 const PATTERNS={
-  sigh:{name:'Quick sigh',seg:[['In through the nose',.5,0,.75],['In again',.5,.75,1],['Out through the mouth',1.15,1,0]]},   // 2.15 s cycle: Geb's stopwatch laps (Nov 2), the rhythm of the original app
+  sigh:{name:'Quick sigh',seg:[['In through the nose',.2,0,.6],['In again',.2,.6,1],['Pause',.45,1,1],['Sigh out',.65,1,0],['Rest',.3,0,0]]},   // 1.8 s cycle measured from Geb's recording (Nov 2): tap, tap 0.18 s later, pause, sigh out about 0.6 s, short rest
   flow:{name:'Flow breath',seg:[['Breathe in',3,0,1],['Hold',2,1,1],['Breathe out slowly',10,1,0]]}};
 function patternPhase(name,sec){
   const p=PATTERNS[name],cyc=p.seg.reduce((a,s)=>a+s[1],0);let t=((sec%cyc)+cyc)%cyc;
@@ -1560,9 +1560,9 @@ function softCue(kind){
       o.frequency.setValueAtTime(f0*mul,t0);o.frequency.linearRampToValueAtTime(f1*mul,t0+dur*.8);
       gn.gain.setValueAtTime(.0001,t0);gn.gain.exponentialRampToValueAtTime(V(v),t0+att);gn.gain.exponentialRampToValueAtTime(.0001,t0+dur);
       o.connect(gn).connect(lp);o.start(t0);o.stop(t0+dur+.05)}};
-    if(kind==='in')tone(659,659,.28,.11,.015);
-    else if(kind==='topup')tone(784,784,.28,.11,.015);
-    else if(kind==='out')tone(587,440,1.0,.08,.08);
+    if(kind==='in')tone(659,659,.16,.11,.01);
+    else if(kind==='topup')tone(784,784,.16,.11,.01);
+    else if(kind==='out')tone(587,440,.6,.08,.05);
   }catch(e){}}
 function breathCue(ph){
   const key=(ph.kind||(ph.inhale?'in':'out'))+':'+(ph.seg??'');
