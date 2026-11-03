@@ -1000,19 +1000,24 @@ const sound=(()=>{
       a.onerror=()=>tryNext();a.src=name+'.'+exts[i++]};
     tryNext()}
   probe('rain');probe('fire');
-  let on=false,usingFiles=false,tgt={rain:0,fire:0},timer=null;
+  let on=false,usingFiles=false,tgt={rain:0,fire:0},timer=null,dog=null;
   let pend=null;
   function start(){if(on)return;on=true;clearTimeout(pend);clearInterval(timer);usingFiles=!!(files.rain||files.fire);
     if(usingFiles){if(!(files.rain&&files.fire)){synth.start(true);synth.only(files.rain?'fire':'rain');synthOn=true}
       for(const k of ['rain','fire'])if(files[k]){files[k].volume=0;files[k].currentTime=0;files[k].play().catch(()=>{})}
-      timer=setInterval(()=>{for(const k of ['rain','fire']){const a=files[k];if(!a)continue;a.volume=Math.max(0,Math.min(1,a.volume+(tgt[k]*VOL-a.volume)*.08))}},100)}
+      timer=setInterval(()=>{for(const k of ['rain','fire']){const a=files[k];if(!a)continue;a.volume=Math.max(0,Math.min(1,a.volume+(tgt[k]*VOL-a.volume)*.08))}},100);
+      // watchdog: browsers (phones especially) sometimes pause or stall a looping file; restart it if so
+      clearInterval(dog);const last={rain:-1,fire:-1},still={rain:0,fire:0};
+      dog=setInterval(()=>{if(!on)return;for(const k of ['rain','fire']){const a=files[k];if(!a)continue;
+        if(a.paused||a.ended){a.play().catch(()=>{});continue}
+        if(a.currentTime===last[k]){if(++still[k]>=2){still[k]=0;try{a.currentTime=0}catch(e){}a.play().catch(()=>{})}}else still[k]=0;last[k]=a.currentTime}},2000)}
     else{synth.start();synthOn=true}}
   function mix(c,chaos){if(!on)return;
     if(usingFiles){tgt.rain=Math.pow(1-c,1.3)*(.45+.4*chaos);tgt.fire=Math.min(1,c*1.15)*.85;if(synthOn)synth.mix(c,chaos)}else synth.mix(c,chaos)}
   let synthOn=false;
   function pace(ph){if(!on)return;if(usingFiles&&!synthOn){synthOn=true;synth.start(true);synth.mix(0,0)}synth.pace(ph)}           // pacer tone always synth (needs to start the synth graph)
   function stop(){if(!on)return;on=false;
-    if(usingFiles){tgt.rain=tgt.fire=0;pend=setTimeout(()=>{clearInterval(timer);for(const k of ['rain','fire'])if(files[k])files[k].pause()},2500)}
+    if(usingFiles){tgt.rain=tgt.fire=0;clearInterval(dog);pend=setTimeout(()=>{clearInterval(timer);for(const k of ['rain','fire'])if(files[k])files[k].pause()},2500)}
     if(synthOn)synth.stop();synthOn=false}
   return{start,mix,pace,stop,get on(){return on}};
 })();
@@ -1766,4 +1771,10 @@ function boringBreak(){const m=$('brk');m.hidden=false;if(session)addMark('borin
   const tk=setInterval(()=>{n--;paint();if(n<=0)done()},1000);
   $('brkEnd').onclick=done}
 addEventListener('resize',()=>{clearTimeout(window._rz);window._rz=setTimeout(()=>{if(window._chartR&&!$('vJournal').hidden&&$('chart'))drawChart(window._chartR)},200)});
+/* screen wake lock while a session, ritual or training runs */
+let WL=null;
+async function wakeOn(){try{if('wakeLock' in navigator&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}}catch(e){}}
+function wakeOff(){try{if(WL){WL.release();WL=null}}catch(e){}}
+setInterval(()=>{const busy=!!(session||train||RITUAL.on);if(busy&&!WL&&!document.hidden)wakeOn();else if(!busy&&WL)wakeOff()},3000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&(session||train||RITUAL.on))wakeOn()});
 </script></body></html>
